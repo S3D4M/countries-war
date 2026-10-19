@@ -52,6 +52,12 @@ function start() {
     if (!lu) return;
     send({ t: 'like', u: lu, n });
   });
+  conn.on(WebcastEvent.MEMBER, (d) => {
+    const mu = d?.user?.uniqueId || d?.user?.unique_id || d?.uniqueId || d?.unique_id;
+    if (!mu) return;
+    console.log('مشاهد دخل البث:', mu);
+    send({ t: 'member', u: mu });
+  });
   conn.on(WebcastEvent.GIFT, (d) => {
     if (d.giftType === 1 && !d.repeatEnd) return;
     const dc = (d.diamondCount || d.giftDetails?.diamondCount || 1) * (d.repeatCount || 1);
