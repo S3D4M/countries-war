@@ -1,17 +1,16 @@
 import http from 'node:http';
 import { readFileSync } from 'node:fs';
-import { WebSocketServer } from 'ws';
-import { TikTokLiveConnection, WebcastEvent, ControlEvent, SignConfig } from 'tiktok-live-connector';
+import WebSocket, { WebSocketServer } from 'ws';
 
 const USER = (process.env.TIKTOK_USER || '').replace('@', '').trim();
 const KEY = process.env.SIGN_API_KEY || '';
 const PORT = process.env.PORT || 3000;
-// حدود الهدايا بالألماس: فوق MID = طيارة (تثبيت 45ث)، فوق BIG = أسد (تثبيت دقيقتين). عدّلها من هنا أو من المتغيرات
 const MID = Number(process.env.GIFT_MID || 100);
 const BIG = Number(process.env.GIFT_BIG || 1000);
+const EULER_URL = 'wss://ws.eulerstream.com';
 
-if (KEY) SignConfig.apiKey = KEY;
 if (!USER) console.error('ناقص المتغير TIKTOK_USER (اسم حسابك بدون @)');
+if (!KEY) console.error('ناقص المتغير SIGN_API_KEY');
 
 const page = readFileSync(new URL('./index.html', import.meta.url));
 const server = http.createServer((req, res) => {
@@ -24,67 +23,99 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 let status = 'wait';
 function send(o) {
   const s = JSON.stringify(o);
-  wss.clients.forEach((c) => c.readyState === 1 && c.send(s));
+  wss.clients.forEach((c) => c.readyState === WebSocket.OPEN && c.send(s));
 }
 function setStatus(s) { status = s; send({ t: 'status', s }); }
 function userId(d) {
-  return d?.user?.uniqueId || d?.user?.unique_id || d?.uniqueId || d?.unique_id;
+  return d?.user?.uniqueId || d?.user?.unique_id || d?.user?.unique_id_name ||
+    d?.user?.displayId || d?.user?.display_id || d?.uniqueId || d?.unique_id;
 }
+function eventData(m) { return m?.data || m?.message || m; }
+function eventType(m) {
+  return String(m?.type || m?.event || m?.method || m?.name || '').toLowerCase();
+}
+
 wss.on('connection', (ws) => ws.send(JSON.stringify({ t: 'status', s: status })));
 
-let conn = null, retrying = false;
-function retry(ms) {
-  if (retrying) return;
-  retrying = true; setStatus('wait');
-  try { conn && conn.disconnect(); } catch (e) {}
-  setTimeout(() => { retrying = false; start(); }, ms);
+let conn = null;
+let retryTimer = null;
+let stopped = false;
+function retry(ms = 10000) {
+  if (retryTimer || stopped) return;
+  setStatus('wait');
+  retryTimer = setTimeout(() => { retryTimer = null; start(); }, ms);
+}
+function closeConnection() {
+  try { conn?.close(); } catch {}
+  conn = null;
+}
+
+function handleMessage(raw) {
+  let packet;
+  try { packet = JSON.parse(raw.toString()); } catch { return; }
+  const messages = Array.isArray(packet?.messages) ? packet.messages : [packet];
+  for (const msg of messages) {
+    const d = eventData(msg);
+    const type = eventType(msg);
+    const who = userId(d) || userId(msg);
+
+    if (type.includes('chat') || type.includes('comment')) {
+      const comment = d?.comment || d?.content || d?.message;
+      if (who && comment) {
+        console.log('تعليق من', who, ':', comment);
+        send({ t: 'chat', u: who, c: comment });
+      }
+      continue;
+    }
+    if (type.includes('gift')) {
+      const giftType = d?.giftType ?? d?.gift_type;
+      const repeatEnd = d?.repeatEnd ?? d?.repeat_end;
+      if (giftType === 1 && repeatEnd === false) continue;
+      const diamondCount = d?.diamondCount || d?.diamond_count || d?.giftDetails?.diamondCount || d?.gift?.diamondCount || 1;
+      const repeatCount = d?.repeatCount || d?.repeat_count || 1;
+      const diamonds = Number(diamondCount) * Number(repeatCount);
+      const k = diamonds >= BIG ? 20 : diamonds >= MID ? 5 : 1;
+      if (who) {
+        console.log('هدية من', who, 'قيمتها', diamonds);
+        send({ t: 'gift', u: who, k, v: diamonds });
+      }
+      continue;
+    }
+    if (type.includes('like')) {
+      if (who) send({ t: 'like', u: who, n: d?.likeCount || d?.like_count || 1 });
+      continue;
+    }
+    if (type.includes('member') || type.includes('join') || type.includes('roomuser')) {
+      if (who) send({ t: 'enter', u: who });
+      continue;
+    }
+    if (type.includes('follow')) {
+      if (who) send({ t: 'follow', u: who });
+      continue;
+    }
+    if (type.includes('share')) {
+      if (who) send({ t: 'share', u: who });
+    }
+  }
 }
 
 function start() {
-  if (!USER) return;
-  conn = new TikTokLiveConnection(USER, KEY ? { signApiKey: KEY } : {});
-  conn.on(WebcastEvent.CHAT, (d) => {
-    const cu = userId(d);
-    const comment = d?.comment || d?.content || d?.message;
-    if (!cu || !comment) return;
-    console.log('تعليق من', cu, ':', comment);
-    send({ t: 'chat', u: cu, c: comment });
+  if (!USER || !KEY || stopped || conn) return;
+  const url = `${EULER_URL}?uniqueId=${encodeURIComponent(USER)}&apiKey=${encodeURIComponent(KEY)}`;
+  console.log('محاولة الاتصال ببث', USER);
+  conn = new WebSocket(url);
+  conn.on('open', () => { console.log('متصل بالبث عبر Euler WebSocket'); setStatus('live'); });
+  conn.on('message', handleMessage);
+  conn.on('error', (e) => console.error('خطأ اتصال Euler:', e?.message || e));
+  conn.on('close', (code, reason) => {
+    const why = reason?.toString() || '';
+    console.error('انقطع اتصال Euler:', code, why);
+    conn = null;
+    retry(code === 4404 ? 15000 : 10000);
   });
-  conn.on(WebcastEvent.LIKE, (d) => {
-    const lu = userId(d);
-    if (!lu) return;
-    send({ t: 'like', u: lu, n: d.likeCount || d.like_count || 1 });
-  });
-  conn.on(WebcastEvent.MEMBER, (d) => {
-    const mu = userId(d);
-    if (!mu) return;
-    send({ t: 'enter', u: mu });
-  });
-  conn.on(WebcastEvent.FOLLOW, (d) => {
-    const fu = userId(d);
-    if (!fu) return;
-    send({ t: 'follow', u: fu });
-  });
-  conn.on(WebcastEvent.SHARE, (d) => {
-    const su = userId(d);
-    if (!su) return;
-    send({ t: 'share', u: su });
-  });
-  conn.on(WebcastEvent.GIFT, (d) => {
-    if (d.giftType === 1 && !d.repeatEnd) return; // سلسلة هدايا لسا شغالة، ننتظر نهايتها
-    const dc = (d.diamondCount || d.giftDetails?.diamondCount || 1) * (d.repeatCount || 1);
-    console.log('هدية من', d.user?.uniqueId || d.uniqueId, ':', d.giftName, 'قيمتها', dc);
-    const k = dc >= BIG ? 20 : dc >= MID ? 5 : 1;
-    const gu = userId(d);
-    if (!gu) return;
-    send({ t: 'gift', u: gu, k, v: dc });
-  });
-  conn.on(ControlEvent.DISCONNECTED, () => retry(10000));
-  conn.on(ControlEvent.ERROR, (e) => console.error('خطأ:', e?.message || e));
-  conn.connect()
-    .then(() => { console.log('متصل بالبث'); setStatus('live'); })
-    .catch((e) => { console.error('فشل الاتصال (غالباً ما في بث الحين):', e?.message || e); retry(15000); });
 }
 
 server.listen(PORT, () => console.log('يعمل على المنفذ ' + PORT));
 start();
+process.on('SIGTERM', () => { stopped = true; clearTimeout(retryTimer); closeConnection(); server.close(); });
+process.on('SIGINT', () => { stopped = true; clearTimeout(retryTimer); closeConnection(); server.close(); });
