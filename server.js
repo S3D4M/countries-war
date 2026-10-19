@@ -46,6 +46,12 @@ function start() {
     console.log('تعليق من', cu, ':', comment);
     send({ t: 'chat', u: cu, c: comment });
   });
+  conn.on(WebcastEvent.LIKE, (d) => {
+    const lu = d?.user?.uniqueId || d?.user?.unique_id || d?.uniqueId || d?.unique_id;
+    const n = d?.likeCount || d?.like_count || 1;
+    if (!lu) return;
+    send({ t: 'like', u: lu, n });
+  });
   conn.on(WebcastEvent.GIFT, (d) => {
     if (d.giftType === 1 && !d.repeatEnd) return;
     const dc = (d.diamondCount || d.giftDetails?.diamondCount || 1) * (d.repeatCount || 1);
