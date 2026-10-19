@@ -40,9 +40,11 @@ function start() {
   if (!USER) return;
   conn = new TikTokLiveConnection(USER, KEY ? { signApiKey: KEY } : {});
   conn.on(WebcastEvent.CHAT, (d) => {
-    const cu = d.user?.uniqueId || d.uniqueId;
-    console.log('تعليق من', cu, ':', d.comment);
-    send({ t: 'chat', u: cu, c: d.comment });
+    const cu = d?.user?.uniqueId || d?.user?.unique_id || d?.uniqueId || d?.unique_id;
+    const comment = d?.comment || d?.content || d?.message;
+    if (!cu || !comment) return;
+    console.log('تعليق من', cu, ':', comment);
+    send({ t: 'chat', u: cu, c: comment });
   });
   conn.on(WebcastEvent.GIFT, (d) => {
     if (d.giftType === 1 && !d.repeatEnd) return;
