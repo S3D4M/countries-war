@@ -68,6 +68,7 @@ input{flex:1}
 <div class="stage">
   <div class="top"><b>🏆 حرب الدول</b><span class="rt" id="rt"></span><span class="gap" id="gap"></span></div>
   <div id="lv" style="text-align:center;font-weight:800;font-size:14px;padding:6px 8px;color:#ffd24a">⏳ بانتظار البث...</div>
+  <div id="tip" style="text-align:center;font-size:14px;font-weight:700;color:#dfe6ff;padding:4px 10px 10px;min-height:22px;transition:opacity .4s">🎮 اكتب اسم دولتك لتنضم للعبة</div>
   <div class="sticky">✍️ اكتب اسم دولتك وادعمها!</div>
   <div class="tip" id="tip"></div>
   <div class="ev" id="ev"></div>
@@ -76,6 +77,7 @@ input{flex:1}
   <div class="gl" id="gl"></div>
   <div class="feed" id="feed"></div>
   <div class="fx" id="fx" aria-hidden="true"></div>
+  <div id="spot" style="display:none;position:absolute;inset:0;z-index:7;align-items:center;justify-content:center;flex-direction:column;gap:12px;text-align:center;background:rgba(10,8,30,.9);padding:20px"><div style="font-size:64px">🔥</div><div id="spotn" style="font-size:34px;font-weight:900;color:#ffd24a;word-break:break-all"></div><div id="spots" style="font-size:18px;font-weight:800;color:#dfe6ff"></div></div>
   <div class="ov" id="ov"><div class="big" id="ovf"></div><div class="t" id="ovt"></div><div class="s" id="ovs"></div><div class="s" id="ovg"></div></div>
 </div>
 
@@ -119,6 +121,8 @@ function byId(id){return C.filter(function(c){return c.id===id})[0]}
 function norm(t){return (t||"").toLowerCase().replace(/[\u064B-\u0652\u0640]/g,"").replace(/[أإآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي")}
 function clean(h){h=(h||"").trim().replace(/\s+/g,"");if(!h)h="@guest";if(h[0]!=="@")h="@"+h;return h.slice(0,22)}
 function lab(c){return c.f+" "+c.n}
+var TIPS=["🎮 لتدخل التحدي اكتب اسم دولتك بالتعليقات، مثلاً: العراق","📣 كل تعليق منك يرفع نقاط دولتك","👆 كبّس على الشاشة لترفع نقاط دولتك","🎁 أرسل هدية تظهر دولتك قدام الكل","🔥 أول من يوصل 100 تكبيسة يطلع اسمه على الشاشة كاملة","✅ اكتب «تم» بعد ما يتثبت حساب، لتكون من المتابعين","🏆 الدولة اللي تتصدر وقت انتهاء الجولة تفوز"];
+var tipI=0;setInterval(function(){var e=$("tip");if(!e)return;e.style.opacity=0;setTimeout(function(){tipI=(tipI+1)%TIPS.length;e.textContent=TIPS[tipI];e.style.opacity=1},400)},5000);
 function setLv(t){var e=$("lv");if(e)e.textContent=t}
 function ev(text,pri){
  if(!pri&&Date.now()<st.hold)return;
@@ -188,6 +192,21 @@ function follow(who){
  if(p.cnt===GOAL){add(p.c,50);p.until+=30000;p.total+=30000;ev("🎉 "+p.h+" وصل "+GOAL+" متابع! "+lab(byId(p.c))+" ياخد +50",true)}
  else if(p.cnt%5===0)ev("🔥 "+p.cnt+" تابعوا "+p.h+"! باقي "+(GOAL-p.cnt)+" ويتفجر الدعم",true);
  renderPin();
+}
+function spotlight(who,cnt){
+ var e=$("spot");if(!e)return;
+ $("spotn").textContent=who;$("spots").textContent="🔥 كبّس "+cnt+" مرة! شجّعوه وارفعوا دولته";
+ e.style.display="flex";sfx("boom");
+ clearTimeout(st.spT);st.spT=setTimeout(function(){e.style.display="none"},4500);
+}
+function tapPts(who,n){
+ if(st.over)return;
+ var u=st.users[who];if(!u)return;
+ var now=Date.now();if(u.tl&&now-u.tl<1500)return;u.tl=now;
+ var p=Math.min(5,Math.max(1,Math.round((n||1)/10)));
+ u.pts+=p;add(u.c,p);
+ u.tt=(u.tt||0)+(n||1);
+ if(Math.floor(u.tt/100)>(u.ts||0)){u.ts=Math.floor(u.tt/100);spotlight(who,u.tt)}
 }
 function comment(who,text){
  if(st.over)return;
@@ -332,6 +351,7 @@ if(LIVE){
   ws.onopen=function(){setLv("🔌 متصل بالجسر، بانتظار البث...")};
   ws.onmessage=function(m){var d;try{d=JSON.parse(m.data)}catch(e){return}
    if(d.t==="chat")comment(clean(d.u),String(d.c||"").slice(0,200));
+   else if(d.t==="like")tapPts(clean(d.u),Number(d.n)||1);
    else if(d.t==="gift"){var gw=clean(d.u),gu=st.users[gw];gift(gw,d.k,gu?gu.c:pickCountry().id)}
    else if(d.t==="status")setLv(d.s==="live"?"\ud83d\udd34 \u0645\u062a\u0635\u0644 \u0628\u0627\u0644\u0628\u062b":"\u23f3 \u0628\u0627\u0646\u062a\u0638\u0627\u0631 \u0627\u0644\u0628\u062b...",true)};
   ws.onclose=function(){setLv("⚠️ انقطع الاتصال بالجسر، يعيد المحاولة...");setTimeout(conn,3000)};
