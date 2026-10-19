@@ -27,6 +27,9 @@ function send(o) {
   wss.clients.forEach((c) => c.readyState === 1 && c.send(s));
 }
 function setStatus(s) { status = s; send({ t: 'status', s }); }
+function userId(d) {
+  return d?.user?.uniqueId || d?.user?.unique_id || d?.uniqueId || d?.unique_id;
+}
 wss.on('connection', (ws) => ws.send(JSON.stringify({ t: 'status', s: status })));
 
 let conn = null, retrying = false;
@@ -41,28 +44,40 @@ function start() {
   if (!USER) return;
   conn = new TikTokLiveConnection(USER, KEY ? { signApiKey: KEY } : {});
   conn.on(WebcastEvent.CHAT, (d) => {
-    const cu = d.user?.uniqueId || d.uniqueId;
-    console.log('تعليق من', cu, ':', d.comment);
-    send({ t: 'chat', u: cu, c: d.comment });
+    const cu = userId(d);
+    const comment = d?.comment || d?.content || d?.message;
+    if (!cu || !comment) return;
+    console.log('تعليق من', cu, ':', comment);
+    send({ t: 'chat', u: cu, c: comment });
   });
   conn.on(WebcastEvent.LIKE, (d) => {
-    send({ t: 'like', u: d.user?.uniqueId || d.uniqueId, n: d.likeCount || 1 });
+    const lu = userId(d);
+    if (!lu) return;
+    send({ t: 'like', u: lu, n: d.likeCount || d.like_count || 1 });
   });
   conn.on(WebcastEvent.MEMBER, (d) => {
-    send({ t: 'enter', u: d.user?.uniqueId || d.uniqueId });
+    const mu = userId(d);
+    if (!mu) return;
+    send({ t: 'enter', u: mu });
   });
   conn.on(WebcastEvent.FOLLOW, (d) => {
-    send({ t: 'follow', u: d.user?.uniqueId || d.uniqueId });
+    const fu = userId(d);
+    if (!fu) return;
+    send({ t: 'follow', u: fu });
   });
   conn.on(WebcastEvent.SHARE, (d) => {
-    send({ t: 'share', u: d.user?.uniqueId || d.uniqueId });
+    const su = userId(d);
+    if (!su) return;
+    send({ t: 'share', u: su });
   });
   conn.on(WebcastEvent.GIFT, (d) => {
     if (d.giftType === 1 && !d.repeatEnd) return; // سلسلة هدايا لسا شغالة، ننتظر نهايتها
     const dc = (d.diamondCount || d.giftDetails?.diamondCount || 1) * (d.repeatCount || 1);
     console.log('هدية من', d.user?.uniqueId || d.uniqueId, ':', d.giftName, 'قيمتها', dc);
     const k = dc >= BIG ? 20 : dc >= MID ? 5 : 1;
-    send({ t: 'gift', u: d.user?.uniqueId || d.uniqueId, k, v: dc });
+    const gu = userId(d);
+    if (!gu) return;
+    send({ t: 'gift', u: gu, k, v: dc });
   });
   conn.on(ControlEvent.DISCONNECTED, () => retry(10000));
   conn.on(ControlEvent.ERROR, (e) => console.error('خطأ:', e?.message || e));
