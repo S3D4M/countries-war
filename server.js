@@ -6,6 +6,7 @@ import { TikTokLiveConnection, WebcastEvent, ControlEvent, SignConfig } from 'ti
 const USER = (process.env.TIKTOK_USER || '').replace('@', '').trim();
 const KEY = process.env.SIGN_API_KEY || '';
 const PORT = process.env.PORT || 3000;
+// حدود الهدايا بالألماس: فوق MID = طيارة (تثبيت 45ث)، فوق BIG = أسد (تثبيت دقيقتين). عدّلها من هنا أو من المتغيرات
 const MID = Number(process.env.GIFT_MID || 100);
 const BIG = Number(process.env.GIFT_BIG || 1000);
 
@@ -40,30 +41,28 @@ function start() {
   if (!USER) return;
   conn = new TikTokLiveConnection(USER, KEY ? { signApiKey: KEY } : {});
   conn.on(WebcastEvent.CHAT, (d) => {
-    const cu = d?.user?.uniqueId || d?.user?.unique_id || d?.uniqueId || d?.unique_id;
-    const comment = d?.comment || d?.content || d?.message;
-    if (!cu || !comment) return;
-    console.log('تعليق من', cu, ':', comment);
-    send({ t: 'chat', u: cu, c: comment });
+    const cu = d.user?.uniqueId || d.uniqueId;
+    console.log('تعليق من', cu, ':', d.comment);
+    send({ t: 'chat', u: cu, c: d.comment });
   });
   conn.on(WebcastEvent.LIKE, (d) => {
-    const lu = d?.user?.uniqueId || d?.user?.unique_id || d?.uniqueId || d?.unique_id;
-    const n = d?.likeCount || d?.like_count || 1;
-    if (!lu) return;
-    send({ t: 'like', u: lu, n });
+    send({ t: 'like', u: d.user?.uniqueId || d.uniqueId, n: d.likeCount || 1 });
   });
   conn.on(WebcastEvent.MEMBER, (d) => {
-    const mu = d?.user?.uniqueId || d?.user?.unique_id || d?.uniqueId || d?.unique_id;
-    if (!mu) return;
-    console.log('مشاهد دخل البث:', mu);
-    send({ t: 'member', u: mu });
+    send({ t: 'enter', u: d.user?.uniqueId || d.uniqueId });
+  });
+  conn.on(WebcastEvent.FOLLOW, (d) => {
+    send({ t: 'follow', u: d.user?.uniqueId || d.uniqueId });
+  });
+  conn.on(WebcastEvent.SHARE, (d) => {
+    send({ t: 'share', u: d.user?.uniqueId || d.uniqueId });
   });
   conn.on(WebcastEvent.GIFT, (d) => {
-    if (d.giftType === 1 && !d.repeatEnd) return;
+    if (d.giftType === 1 && !d.repeatEnd) return; // سلسلة هدايا لسا شغالة، ننتظر نهايتها
     const dc = (d.diamondCount || d.giftDetails?.diamondCount || 1) * (d.repeatCount || 1);
     console.log('هدية من', d.user?.uniqueId || d.uniqueId, ':', d.giftName, 'قيمتها', dc);
     const k = dc >= BIG ? 20 : dc >= MID ? 5 : 1;
-    send({ t: 'gift', u: d.user?.uniqueId || d.uniqueId, k });
+    send({ t: 'gift', u: d.user?.uniqueId || d.uniqueId, k, v: dc });
   });
   conn.on(ControlEvent.DISCONNECTED, () => retry(10000));
   conn.on(ControlEvent.ERROR, (e) => console.error('خطأ:', e?.message || e));
