@@ -421,7 +421,7 @@ $("rst").onclick=function(){var b=this;
  b._t=setTimeout(function(){delete b.dataset.s;b.textContent="🔄 تصفير اللعبة"},3000)};
 var LIVE=/[?&]live/.test(location.search);
 if(LIVE){
- st.bots=false;resetGame(true);var pn=document.querySelector(".panel");if(pn)pn.style.display="none";
+  st.bots=false;resetGame(true);var pn=document.querySelector(".panel");if(pn)pn.style.display="none";var guide=document.querySelector("#guide"),welcome=document.querySelector("#welcome");if(guide)guide.style.display="none";if(welcome){welcome.style.display="block";welcome.textContent="👋 أهلاً بالمشاهدين الجدد!"}
  (function conn(){
   var ws=new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host+"/ws");
   ws.onopen=function(){setLv("🔌 متصل بالجسر، بانتظار البث...")};
