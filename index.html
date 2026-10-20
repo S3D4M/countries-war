@@ -275,7 +275,11 @@ function tapPts(who,n){
 function comment(who,text){
  if(st.over)return;
  var t=text.trim();if(!t)return;
- if(st.pin&&isDone(t)){follow(who);return}
+ if(isDone(t)){
+  if(st.pin)follow(who);
+  else{st.fl=st.fl||{};st.fl[who]=st.fl[who]||{};st.fl[who].fo=1;feed("✅ تابع الحساب المثبّت","g",who);ev("✅ تم تسجيل متابعة "+who);checkSup(who)}
+  return;
+ }
  var id=detect(t),u=st.users[who];
  if(!u){if(!id){feed(t,"",who);ev("👋 "+who+" اكتب اسم دولتك لتنضم");return}join(who,id);u=st.users[who]}
  var now=Date.now(),rt=st.rate[who]=(st.rate[who]||[]).filter(function(x){return now-x<10000});
