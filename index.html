@@ -13,11 +13,11 @@ html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,'Segoe UI',Tahoma,Arial,sans-serif}
 .wrap{max-width:440px;margin:0 auto;padding:12px 12px 40px}
-.stage{position:relative;overflow:hidden;border-radius:20px;background:linear-gradient(180deg,#1a1033,#0b1a33);color:#fff;min-height:820px;display:flex;flex-direction:column;padding:14px;gap:8px}
+.stage{position:relative;overflow:hidden;border-radius:20px;background:linear-gradient(180deg,#0e2e2c,#2e1a08);color:#fff;min-height:820px;display:flex;flex-direction:column;padding:14px;gap:8px}
 .top{display:flex;justify-content:space-between;align-items:center}
 .top b{font-size:20px;font-weight:900}
 .gap{font-size:13px;color:#ffd98a}
-.tip{font-size:14px;text-align:center;color:#dfe6ff;min-height:24px;animation:fade .5s}
+.tip{font-size:14px;text-align:center;color:#f4eedc;min-height:24px;animation:fade .5s}
 @keyframes fade{from{opacity:0}}
 .ev{background:rgba(255,255,255,.12);border-radius:12px;padding:8px 12px;text-align:center;font-weight:700;font-size:15px;min-height:46px;display:flex;align-items:center;justify-content:center}
 .ev.new{animation:pop .35s ease-out;background:rgba(255,210,74,.25)}
@@ -26,23 +26,29 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple
 .row{position:absolute;left:0;right:0;height:32px;display:flex;align-items:center;gap:6px;transition:transform .6s ease}
 .rn{width:20px;text-align:center;font-weight:900;color:#b9c3e6;font-size:13px}
 .fl{font-size:22px;width:30px;text-align:center}
-.nm{width:58px;font-size:13px;font-weight:700}
-.bw{flex:1;height:20px;border-radius:10px;background:rgba(255,255,255,.1);overflow:hidden;direction:ltr}
+.nm{width:84px;flex:none;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fl{width:24px;flex:none;text-align:center}
+.mr{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#f4eedc;padding:3px 0;direction:rtl}
+.mr .rk{width:20px;flex:none;text-align:center;color:#b9c3e6}
+.mr .nm{color:#f4eedc}
+.mr .dt{flex:1;border-bottom:2px dotted rgba(255,255,255,.45);margin:0 4px;min-width:20px}
+.mr .vv{flex:none;min-width:34px;text-align:left;direction:ltr}
+.bw{flex:1;height:20px;border-radius:10px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.45) 0 3px,transparent 3px 9px);overflow:hidden;direction:ltr}
 .bw i{display:block;height:100%;border-radius:10px;transition:width .4s}
 .sc{width:58px;font-size:12px;text-align:left;direction:ltr;font-variant-numeric:tabular-nums}
 .sc small{color:#b9c3e6;display:block;font-size:10px;line-height:1}
-.row.first .nm{color:#ffd24a}
-.pin{display:none;background:rgba(255,210,74,.12);border:2px solid #ffd24a;border-radius:14px;padding:8px 12px;align-items:center;gap:10px}
+.row.first .nm{color:#ffc247}
+.pin{display:none;background:rgba(255,210,74,.12);border:2px solid #ffc247;border-radius:14px;padding:8px 12px;align-items:center;gap:10px}
 .pin.on{display:flex}
 .pin .av{font-size:32px}
 .pin .h{font-weight:900;font-size:18px;direction:ltr;text-align:right}
 .pin .s{font-size:12px;color:#ffe9a8}
 .pin .bar{height:6px;border-radius:3px;background:rgba(255,255,255,.2);margin-top:4px;overflow:hidden}
-.pin .bar i{display:block;height:100%;background:#ffd24a;transition:width .3s}
-.gl{font-size:12px;color:#ffd24a;direction:ltr;min-height:18px}
+.pin .bar i{display:block;height:100%;background:#ffc247;transition:width .3s}
+.gl{font-size:12px;color:#ffc247;direction:ltr;min-height:18px}
 .feed{margin-top:auto;display:flex;flex-direction:column;gap:3px;font-size:13px;min-height:80px;justify-content:flex-end}
 .feed span{background:rgba(0,0,0,.35);padding:2px 10px;border-radius:10px;width:fit-content;max-width:100%}
-.feed b{color:#8fd0ff}.feed .g b{color:#ffd24a}
+.feed b{color:#8fd0ff}.feed .g b{color:#ffc247}
 button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:9px 14px;cursor:pointer;background:var(--btn);color:var(--btn-ink)}
 button.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
 :focus-visible{outline:3px solid #ffb020;outline-offset:2px}
@@ -53,10 +59,10 @@ button.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line
 input,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px;min-width:0}
 input{flex:1}
 .rt{font-size:13px;color:#cfe;font-variant-numeric:tabular-nums}
-.sticky{background:#ffd24a;color:#1a1033;border-radius:10px;padding:5px 10px;text-align:center;font-weight:900;font-size:14px}
+.sticky{background:#ffc247;color:#1a1033;border-radius:10px;padding:5px 10px;text-align:center;font-weight:900;font-size:14px}
 .ov{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;background:rgba(10,8,30,.92);z-index:5;font-weight:900;padding:20px}
 .ov.on{display:flex;animation:fade .4s}
-.ov .big{font-size:72px}.ov .t{font-size:26px;color:#ffd24a}.ov .s{font-size:15px;color:#dfe6ff;font-weight:700}
+.ov .big{font-size:72px}.ov .t{font-size:26px;color:#ffc247}.ov .s{font-size:15px;color:#f4eedc;font-weight:700}
 .fx{position:absolute;inset:0;pointer-events:none;z-index:4;display:flex;align-items:center;justify-content:center;font-size:90px;opacity:0}
 .fx.go{animation:fxa 1.4s ease-out}
 @keyframes fxa{0%{opacity:0;transform:scale(.4)}20%{opacity:1;transform:scale(1.1)}100%{opacity:0;transform:scale(1.6)}}
@@ -67,19 +73,16 @@ input{flex:1}
 <div class="wrap">
 <div class="stage">
   <div class="top"><b>🏆 حرب الدول</b><span class="rt" id="rt"></span><span class="gap" id="gap"></span></div>
-  <div id="lv" style="text-align:center;font-weight:800;font-size:14px;padding:6px 8px;color:#ffd24a">⏳ بانتظار البث...</div>
+  <div id="lv" style="text-align:center;font-weight:800;font-size:14px;padding:6px 8px;color:#ffc247">⏳ بانتظار البث...</div>
   <div id="supl" style="text-align:center;font-size:14px;font-weight:800;color:#7CFFB2;padding:0 8px"></div>
-  <div id="tip" style="text-align:center;font-size:14px;font-weight:700;color:#dfe6ff;padding:4px 10px 10px;min-height:22px;transition:opacity .4s">🎮 اكتب اسم دولتك لتنضم للعبة</div>
-  <div class="sticky">✍️ اكتب اسم دولتك وادعمها!</div>
-  <div class="tip" id="tip"></div>
   <div class="ev" id="ev"></div>
   <div class="rank" id="rank"></div>
-  <div id="more" style="display:none;font-size:13px;font-weight:700;color:#dfe6ff;text-align:center;padding:6px 8px;line-height:1.9"></div>
+  <div id="more" style="display:none;font-size:13px;font-weight:700;color:#f4eedc;text-align:center;padding:6px 8px;line-height:1.9"></div>
   <div class="pin" id="pin"><div class="av" id="pav"></div><div style="flex:1"><div class="h" id="ph"></div><div class="s" id="ps"></div><div class="bar"><i id="pb"></i></div></div></div>
   <div class="gl" id="gl"></div>
   <div class="feed" id="feed"></div>
   <div class="fx" id="fx" aria-hidden="true"></div>
-  <div id="spot" style="display:none;position:absolute;inset:0;z-index:7;align-items:center;justify-content:center;flex-direction:column;gap:12px;text-align:center;background:rgba(10,8,30,.9);padding:20px"><div style="font-size:64px">🔥</div><div id="spotn" style="font-size:34px;font-weight:900;color:#ffd24a;word-break:break-all"></div><div id="spots" style="font-size:18px;font-weight:800;color:#dfe6ff"></div></div>
+  <div id="spot" style="display:none;position:absolute;inset:0;z-index:7;align-items:center;justify-content:center;flex-direction:column;gap:12px;text-align:center;background:rgba(10,8,30,.9);padding:20px"><div style="font-size:64px">🔥</div><div id="spotn" style="font-size:34px;font-weight:900;color:#ffc247;word-break:break-all"></div><div id="spots" style="font-size:18px;font-weight:800;color:#f4eedc"></div></div>
   <div class="ov" id="ov"><div class="big" id="ovf"></div><div class="t" id="ovt"></div><div class="s" id="ovs"></div><div class="s" id="ovg"></div></div>
 </div>
 
@@ -98,7 +101,6 @@ input{flex:1}
 <script>
 var $=function(i){return document.getElementById(i)};
 var DEF="اكتب اسم دولتك الآن وارفع علمها! 🇯🇴 🇮🇶 🇪🇬 🇸🇦";
-var TIPS=["1️⃣ اكتب اسم دولتك وارفع علمها","2️⃣ كل تعليق = نقطة لدولتك","🎁 أرسل 🌹 أو ✈️ ليظهر حسابك ويتابعك الجميع","✅ شفت حساب مثبّت؟ تابعه واكتب «تم» لترفع دولتك"];
 var C=[
  {id:"sa",n:"السعودية",f:"🇸🇦",k:["سعوديه","🇸🇦"],c:"#2fa86a",w:5},
  {id:"eg",n:"مصر",f:"🇪🇬",k:["مصر","🇪🇬"],c:"#e0b040",w:6},
@@ -123,8 +125,6 @@ function byId(id){return C.filter(function(c){return c.id===id})[0]}
 function norm(t){return (t||"").toLowerCase().replace(/[\u064B-\u0652\u0640]/g,"").replace(/[أإآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي")}
 function clean(h){h=(h||"").trim().replace(/\s+/g,"");if(!h)h="@guest";if(h[0]!=="@")h="@"+h;return h.slice(0,22)}
 function lab(c){return c.f+" "+c.n}
-var TIPS=["🎮 لتدخل التحدي اكتب اسم دولتك بالتعليقات، مثلاً: العراق","📣 كل تعليق منك يرفع نقاط دولتك","👆 كبّس على الشاشة لترفع نقاط دولتك","🎁 أرسل هدية تظهر دولتك قدام الكل","🔥 أول من يوصل 100 تكبيسة يطلع اسمه على الشاشة كاملة","✅ اكتب «تم» بعد ما يتثبت حساب، لتكون من المتابعين","🏆 الدولة اللي تتصدر وقت انتهاء الجولة تفوز","🛡️ كن داعم: أرسل 10 دونات، وتابع الحساب المثبّت، وشارك البث، وينثبت حسابك 5 دقايق"];
-var tipI=0;setInterval(function(){var e=$("tip");if(!e)return;e.style.opacity=0;setTimeout(function(){tipI=(tipI+1)%TIPS.length;e.textContent=TIPS[tipI];e.style.opacity=1},400)},5000);
 function setLv(t){var e=$("lv");if(e)e.textContent=t}
 function ev(text,pri){
  if(!pri&&Date.now()<st.hold)return;
@@ -143,14 +143,18 @@ C.forEach(function(c){
  $("rank").appendChild(r);rows[c.id]=r;
  var o=document.createElement("option");o.value=c.id;o.textContent=lab(c);$("cs").appendChild(o);
 });
-var TOP=8;
+var TOP=99;
 function render(){
+ if(st.rq)return;
+ st.rq=requestAnimationFrame(function(){st.rq=0;renderNow()});
+}
+function renderNow(){
  var ord=order(),max=Math.max(1,st.s[ord[0].id]);
  $("rank").style.height=Math.min(ord.length,TOP)*ROW+"px";
  var more=[];
  ord.forEach(function(c,i){
   var r=rows[c.id];r.style.display=i<TOP?"":"none";
-  if(i>=TOP){more.push((i+1)+". "+c.f+" "+c.n+" "+Math.round(st.s[c.id]));return}
+  if(i>=TOP){more.push('<div class="mr"><span class="rk">'+(i+1)+'</span><span class="fl">'+c.f+'</span><span class="nm">'+c.n+'</span><span class="dt"></span><span class="vv">'+Math.round(st.s[c.id])+'</span></div>');return}
   r.style.transform="translateY("+(i*ROW)+"px)";
   r.className="row"+(i===0?" first":"");
   r.querySelector(".rn").textContent=i===0?"👑":(i+1);
@@ -158,7 +162,7 @@ function render(){
   r.querySelector(".v").textContent=Math.round(st.s[c.id]);
   r.querySelector("small").textContent=st.cnt[c.id]+" لاعب";
  });
- var mo=$("more");mo.style.display=more.length?"":"none";mo.textContent=more.join("  ·  ");
+ var mo=$("more");mo.style.display=more.length?"":"none";mo.style.textAlign="";mo.style.padding="6px 14px";mo.style.whiteSpace="";mo.innerHTML=more.join("");
  $("gap").textContent="فارق الأول: "+Math.round(st.s[ord[0].id]-st.s[ord[1].id]);
 }
 function renderPin(){
@@ -218,7 +222,11 @@ function checkSup(who){
  }
 }
 var lastEnter=0;
-function enter(who){var n=Date.now();if(n-lastEnter<2500)return;lastEnter=n;feed("دخل البث 👋","enter",who)}
+function say(t){
+ if(!SND||!("speechSynthesis" in window))return;
+ try{var u=new SpeechSynthesisUtterance(t);u.lang="ar";u.rate=1.05;u.pitch=1.1;u.volume=1;speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}
+}
+function enter(who){var n=Date.now();if(n-lastEnter<2500)return;lastEnter=n;feed("دخل البث 👋","enter",who);say("هلا ونورت يا "+String(who).replace(/^@/,""))}
 function flag(who,key){st.fl=st.fl||{};st.fl[who]=st.fl[who]||{};st.fl[who][key]=1;checkSup(who)}
 function supTick(){
  var now=Date.now(),parts=[],live=[];
@@ -229,7 +237,7 @@ function supTick(){
   parts.push(w+" ("+Math.floor(left/60)+":"+("0"+left%60).slice(-2)+")");
  });
  parts=live.sort(function(a,b){return b[1]-a[1]}).map(function(x){var left=Math.ceil((x[1]-now)/1000);return x[0]+" ("+Math.floor(left/60)+":"+("0"+left%60).slice(-2)+")"});
- var e=$("supl");if(e)e.textContent=parts.length?"🛡️ الداعمين: "+parts.join("  ·  "):"";
+ var e=$("supl"),tx=parts.length?"🛡️ الداعمين: "+parts.join("  ·  "):"";if(e&&e.textContent!==tx)e.textContent=tx;
 }
 setInterval(supTick,1000);
 function tapPts(who,n){
@@ -291,10 +299,8 @@ setInterval(function(){
  if(ks.length&&Math.random()<0.05){var r=Math.random(),k=r<0.5?1:(r<0.85?5:20),h2=ks[Math.floor(Math.random()*ks.length)];gift(h2,k,st.users[h2].c)}
  if(st.pin&&ks.length&&Math.random()<0.5){var pool=ks.filter(function(x){return !st.pin.done[x]&&x!==st.pin.h});if(pool.length)comment(pool[Math.floor(Math.random()*pool.length)],"تم ✅")}
 },700);
-setInterval(function(){C.forEach(function(c){st.s[c.id]*=0.997});render();renderPin()},500);
+setInterval(function(){C.forEach(function(c){st.s[c.id]*=0.994});render();renderPin()},1000);
 setInterval(function(){var o=order(),l=o[o.length-1];if(Object.keys(st.users).length>5)ev("وينكم يا "+lab(l)+"؟ اكتبوا اسم بلدكم!")},20000);
-var ti=0;function tip(){var t=$("tip");t.style.animation="none";void t.offsetWidth;t.style.animation="";t.textContent=TIPS[ti++%TIPS.length]}
-tip();setInterval(tip,4500);
 function fx(icon,k){var e=$("fx");e.textContent=k===20?icon+icon+icon:icon;e.className="fx";void e.offsetWidth;e.className="fx go"}
 function endRound(){
  st.over=1;sfx("end");var w=order()[0];
@@ -339,7 +345,7 @@ $("snd").onclick=function(){
  if(SND){lastS=0;sfx("rose")}
 };
 var MUS=false,mStep=0,mNext=0,mTimer=null,NB=null;
-var SC=[440,466.16,554.37,587.33,659.25,698.46,783.99,880],RT=[110,110,116.54,110,110,110,98,116.54],PAT=[0,2,4,2,3,4,5,4,2,4,6,4,7,6,5,4];
+var SC=[293.66,311.13,369.99,392,440,466.16,523.25,587.33],RT=[146.83,146.83,155.56,146.83,130.81,146.83,155.56,146.83],PAT=[0,1,2,3,2,1,0,1,4,5,6,5,4,3,2,0];
 function ax(){if(!AX){var K=window.AudioContext||window.webkitAudioContext;if(!K)return false;AX=new K()}if(AX.state==="suspended")AX.resume();return true}
 function mn(f,t,d,type,v){var o=AX.createOscillator(),g=AX.createGain();o.type=type;o.frequency.value=f;g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.0001,t+d);o.connect(g);g.connect(AX.destination);o.start(t);o.stop(t+d+0.02)}
 function kick(t){var o=AX.createOscillator(),g=AX.createGain();o.frequency.setValueAtTime(160,t);o.frequency.exponentialRampToValueAtTime(40,t+0.14);g.gain.setValueAtTime(0.22,t);g.gain.exponentialRampToValueAtTime(0.0001,t+0.16);o.connect(g);g.connect(AX.destination);o.start(t);o.stop(t+0.18)}
