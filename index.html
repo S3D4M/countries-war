@@ -44,6 +44,7 @@ html,body{margin:0;background:var(--bg);color:var(--fg);font-family:Tahoma,Arial
 <body>
 <div class="wrap">
   <div class="top">🔥 تابع الحساب فوق واكتب تم، ثم علّق @يوزرك وادخل الدور 🔥</div>
+  <div id="bridge" style="text-align:center;background:#2c2750;border-radius:12px;padding:8px;font-weight:700;color:#ffc93c">⏳ بانتظار البث...</div>
   <div class="pin" id="pin" style="display:none"><div class="lbl">👑 صاعد فوق</div><div class="name"><span class="fol">＋ متابعة</span><span id="pn">@---</span></div><div class="bar"><i id="pb"></i></div><div class="lbl">باقي <b id="pt">5:00</b></div></div>
   <div class="spot" id="spot">
     <div class="lbl">الحساب المدعوم الآن</div>
@@ -133,7 +134,9 @@ function drawPin(){
   var m=Math.floor(pinLeft/60),s=Math.floor(pinLeft%60);
   $('pt').textContent=m+':'+(s<10?'0':'')+s; pinTotal=Math.max(pinTotal,pinLeft);$('pb').style.width=(pinLeft/pinTotal*100)+'%';
 }
+function bridgeStatus(s){var b=$('bridge');if(!b)return;var live=s==='live';b.textContent=live?'🔴 متصل بالبث':'⏳ بانتظار البث...';b.style.color=live?'#7CFFB2':'#ffc93c';b.style.background=live?'#123d35':'#2c2750'}
 window.liveEvent=function(e){
+  if(e.type==='status'){bridgeStatus(e.status);return}
   var t=(e.text||'').trim(), m=t.match(/@([\w.]+)/);
   if(m)acctOf[e.user]=clean(m[1]);
   if(e.type==='follow'){addReq(e.user,'follow',1);log('➕ '+e.user+' تابع الحساب');return}

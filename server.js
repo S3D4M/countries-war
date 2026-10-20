@@ -30,7 +30,7 @@ function emit(ev) {
   sseClients.forEach((res) => res.write(line));
   console.log('event', JSON.stringify(ev));
 }
-function setStatus(s) { status = s; }
+function setStatus(s) { status = s; emit({ type: 'status', status: s }); }
 function retry(ms = 10000) {
   if (retryTimer || stopped) return;
   setStatus('wait');
@@ -78,6 +78,7 @@ const server = http.createServer((req, res) => {
   if (req.url.startsWith('/events')) {
     res.writeHead(200, {'content-type':'text/event-stream', 'cache-control':'no-cache', connection:'keep-alive', 'access-control-allow-origin':'*'});
     res.write(': ok\n\n');
+    res.write(`data: ${JSON.stringify({ type: 'status', status })}\n\n`);
     sseClients.add(res);
     req.on('close', () => sseClients.delete(res));
     return;
