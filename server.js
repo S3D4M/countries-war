@@ -28,9 +28,10 @@ function send(o) {
 function setStatus(s) { status = s; send({ t: 'status', s }); }
 function userId(d) {
   return d?.user?.uniqueId || d?.user?.unique_id || d?.user?.unique_id_name ||
-    d?.user?.displayId || d?.user?.display_id || d?.uniqueId || d?.unique_id;
+    d?.user?.displayId || d?.user?.display_id || d?.userInfo?.uniqueId ||
+    d?.userInfo?.unique_id || d?.uniqueId || d?.unique_id;
 }
-function eventData(m) { return m?.data || m?.message || m; }
+function eventData(m) { return m?.data || m?.message || m?.msg || m?.payload || m; }
 function eventType(m) {
   return String(m?.type || m?.event || m?.method || m?.name || '').toLowerCase();
 }
@@ -82,8 +83,11 @@ function handleMessage(raw) {
       continue;
     }
     if (type.includes('like')) {
-      const likes = d?.likeCount || d?.like_count || d?.count || d?.totalLikeCount || d?.total_like_count || 1;
-      if (who) send({ t: 'like', u: who, n: Number(likes) || 1 });
+      const likes = d?.likeCount || d?.like_count || d?.count || d?.likeNum || d?.like_num || d?.totalLikeCount || d?.total_like_count || 1;
+      if (who) {
+        console.log('تكبيس من', who, ':', Number(likes) || 1);
+        send({ t: 'like', u: who, n: Number(likes) || 1 });
+      }
       continue;
     }
     if (type.includes('member') || type.includes('join') || type.includes('roomuser')) {

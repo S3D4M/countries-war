@@ -423,7 +423,7 @@ if(LIVE){
    else if(d.t==="enter")enter(clean(d.u));
    else if(d.t==="follow")flag(clean(d.u),"fo");
    else if(d.t==="share")flag(clean(d.u),"sh");
-   else if(d.t==="like")tapPts(clean(d.u),Number(d.n)||1);
+   else if(d.t==="like")tapPts(clean(d.u),Math.max(1,Number(d.n)||1));
    else if(d.t==="gift"){var gw=clean(d.u),gu=st.users[gw];gift(gw,d.k,gu?gu.c:pickCountry().id,d.v)}
    else if(d.t==="status")setLv(d.s==="live"?"\ud83d\udd34 \u0645\u062a\u0635\u0644 \u0628\u0627\u0644\u0628\u062b":"\u23f3 \u0628\u0627\u0646\u062a\u0638\u0627\u0631 \u0627\u0644\u0628\u062b...",true)};
   ws.onclose=function(){setLv("⚠️ انقطع الاتصال بالجسر، يعيد المحاولة...");setTimeout(conn,3000)};
