@@ -1,0 +1,81 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name=claude:viewport-fit-sides content=cover><style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-right:env(safe-area-inset-right,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}</style><style>.md-table{overflow-x:auto}@media print{.md-table{overflow-x:visible}}</style><style>:root{color-scheme:light dark;--md-bg:#fff;--md-text:rgba(0,0,0,.8);--md-muted:rgba(0,0,0,.6);--md-fill:rgba(0,0,0,.04);--md-fill-strong:rgba(0,0,0,.06);--md-rule:rgba(0,0,0,.1);--md-rule-strong:rgba(0,0,0,.16);--md-link:hsl(210 100% 45%)}@media (prefers-color-scheme:dark){:root:where(:not([data-theme="light"])){--md-bg:#0d0d0d;--md-text:rgba(255,255,255,.85);--md-muted:rgba(255,255,255,.6);--md-fill:rgba(255,255,255,.06);--md-fill-strong:rgba(255,255,255,.09);--md-rule:rgba(255,255,255,.14);--md-rule-strong:rgba(255,255,255,.22);--md-link:hsl(210 100% 72%)}}:root[data-theme="dark"]{color-scheme:dark;--md-bg:#0d0d0d;--md-text:rgba(255,255,255,.85);--md-muted:rgba(255,255,255,.6);--md-fill:rgba(255,255,255,.06);--md-fill-strong:rgba(255,255,255,.09);--md-rule:rgba(255,255,255,.14);--md-rule-strong:rgba(255,255,255,.22);--md-link:hsl(210 100% 72%)}:root[data-theme="light"]{color-scheme:light}@media print{:root,:root[data-theme="dark"]{color-scheme:light;--md-bg:#fff;--md-text:rgba(0,0,0,.8);--md-muted:rgba(0,0,0,.6);--md-fill:rgba(0,0,0,.04);--md-fill-strong:rgba(0,0,0,.06);--md-rule:rgba(0,0,0,.1);--md-rule-strong:rgba(0,0,0,.16);--md-link:hsl(210 100% 45%)}}body{background:var(--md-bg);color:var(--md-text);max-width:720px;margin:0 auto;padding:32px;display:flex;flex-direction:column;gap:10px;font:14px/1.55 -apple-system,BlinkMacSystemFont,'SF Pro','Segoe UI',sans-serif;overflow-wrap:break-word}body>:first-child{margin-top:0}h1,h2,h3,h4,h5,h6{margin:6px 0 0;line-height:1.25;font-weight:600;text-wrap:balance}h1{font-size:1.35em}h2{font-size:1.15em;color:var(--md-muted)}h3,h4,h5,h6{font-size:1em}p,ul,ol,blockquote,table,pre,hr{margin:0}strong{font-weight:600}a{color:var(--md-link);text-decoration:none}a:hover{text-decoration:underline}ul,ol{display:flex;flex-direction:column;gap:6px;padding-left:22px}ul{list-style:disc}ol{list-style:decimal}:is(li,td,th)>*+:is(p,ul,ol,blockquote){margin-top:6px}blockquote{display:flex;flex-direction:column;gap:10px;border-left:2px solid var(--md-rule);padding-left:10px;color:var(--md-muted)}:not(pre)>code{background:var(--md-fill);padding:1px 3px;border-radius:4px;font:.92em 'SF Mono',ui-monospace,Menlo,Consolas,monospace}a>code{background:none;color:inherit}pre{background:var(--md-fill);padding:10px 12px;border-radius:6px;overflow-x:auto;font:12px/1.5 'SF Mono',ui-monospace,Menlo,Consolas,monospace;margin-block:4px}pre code{background:none;padding:0;font:inherit}table{width:100%;border-collapse:separate;border-spacing:2px;font:inherit}th,td{padding:6px 8px;border-radius:3px;text-align:left;vertical-align:top}th{background:var(--md-fill-strong);font-weight:600}td{background:var(--md-fill)}:is(th,td) :not(pre)>code{background:transparent}hr{border:0;border-top:1px solid var(--md-rule-strong);margin-block:10px}img{max-width:100%;height:auto;border-radius:4px}</style>
+</head><body>
+<pre><code class="language-js">import http from &#39;node:http&#39;;
+import { readFileSync } from &#39;node:fs&#39;;
+import { WebSocketServer } from &#39;ws&#39;;
+import { TikTokLiveConnection, WebcastEvent, ControlEvent, SignConfig } from &#39;tiktok-live-connector&#39;;
+
+const USER = (process.env.TIKTOK_USER || &#39;&#39;).replace(&#39;@&#39;, &#39;&#39;).trim();
+const KEY = process.env.SIGN_API_KEY || &#39;&#39;;
+const PORT = process.env.PORT || 3000;
+// حدود الهدايا بالألماس: فوق MID = طيارة (تثبيت 45ث)، فوق BIG = أسد (تثبيت دقيقتين). عدّلها من هنا أو من المتغيرات
+const MID = Number(process.env.GIFT_MID || 100);
+const BIG = Number(process.env.GIFT_BIG || 1000);
+
+if (KEY) SignConfig.apiKey = KEY;
+if (!USER) console.error(&#39;ناقص المتغير TIKTOK_USER (اسم حسابك بدون @)&#39;);
+
+const page = readFileSync(new URL(&#39;./index.html&#39;, import.meta.url));
+const server = http.createServer((req, res) =&gt; {
+  if (req.url.startsWith(&#39;/health&#39;)) { res.end(&#39;ok&#39;); return; }
+  res.writeHead(200, { &#39;content-type&#39;: &#39;text/html; charset=utf-8&#39; });
+  res.end(page);
+});
+const wss = new WebSocketServer({ server, path: &#39;/ws&#39; });
+
+let status = &#39;wait&#39;;
+function send(o) {
+  const s = JSON.stringify(o);
+  wss.clients.forEach((c) =&gt; c.readyState === 1 &amp;&amp; c.send(s));
+}
+function setStatus(s) { status = s; send({ t: &#39;status&#39;, s }); }
+wss.on(&#39;connection&#39;, (ws) =&gt; ws.send(JSON.stringify({ t: &#39;status&#39;, s: status })));
+
+let conn = null, retrying = false;
+function retry(ms) {
+  if (retrying) return;
+  retrying = true; setStatus(&#39;wait&#39;);
+  try { conn &amp;&amp; conn.disconnect(); } catch (e) {}
+  setTimeout(() =&gt; { retrying = false; start(); }, ms);
+}
+
+function start() {
+  if (!USER) return;
+  conn = new TikTokLiveConnection(USER, KEY ? { signApiKey: KEY } : {});
+  conn.on(WebcastEvent.CHAT, (d) =&gt; {
+    const cu = d.user?.uniqueId || d.uniqueId;
+    console.log(&#39;تعليق من&#39;, cu, &#39;:&#39;, d.comment);
+    const av = d.user?.profilePictureUrl || d.user?.profilePicture?.urls?.[0] || &#39;&#39;;
+    send({ t: &#39;chat&#39;, u: cu, c: d.comment, av });
+  });
+  conn.on(WebcastEvent.LIKE, (d) =&gt; {
+    send({ t: &#39;like&#39;, u: d.user?.uniqueId || d.uniqueId, n: d.likeCount || 1 });
+  });
+  conn.on(WebcastEvent.MEMBER, (d) =&gt; {
+    send({ t: &#39;enter&#39;, u: d.user?.uniqueId || d.uniqueId });
+  });
+  conn.on(WebcastEvent.FOLLOW, (d) =&gt; {
+    send({ t: &#39;follow&#39;, u: d.user?.uniqueId || d.uniqueId });
+  });
+  conn.on(WebcastEvent.SHARE, (d) =&gt; {
+    send({ t: &#39;share&#39;, u: d.user?.uniqueId || d.uniqueId });
+  });
+  conn.on(WebcastEvent.GIFT, (d) =&gt; {
+    if (d.giftType === 1 &amp;&amp; !d.repeatEnd) return; // سلسلة هدايا لسا شغالة، ننتظر نهايتها
+    const dc = (d.diamondCount || d.giftDetails?.diamondCount || 1) * (d.repeatCount || 1);
+    console.log(&#39;هدية من&#39;, d.user?.uniqueId || d.uniqueId, &#39;:&#39;, d.giftName, &#39;قيمتها&#39;, dc);
+    const k = dc &gt;= BIG ? 20 : dc &gt;= MID ? 5 : 1;
+    send({ t: &#39;gift&#39;, u: d.user?.uniqueId || d.uniqueId, k, v: dc });
+  });
+  conn.on(ControlEvent.DISCONNECTED, () =&gt; retry(10000));
+  conn.on(ControlEvent.ERROR, (e) =&gt; console.error(&#39;خطأ:&#39;, e?.message || e));
+  conn.connect()
+    .then(() =&gt; { console.log(&#39;متصل بالبث&#39;); setStatus(&#39;live&#39;); })
+    .catch((e) =&gt; { console.error(&#39;فشل الاتصال (غالباً ما في بث الحين):&#39;, e?.message || e); retry(15000); });
+}
+
+server.listen(PORT, () =&gt; console.log(&#39;يعمل على المنفذ &#39; + PORT));
+start();
+</code></pre>
+
+</body></html>

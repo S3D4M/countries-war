@@ -74,7 +74,8 @@ input{flex:1}
 <div class="stage">
   <div class="top"><b>🏆 حرب الدول</b><span class="rt" id="rt"></span><span class="gap" id="gap"></span></div>
   <div id="lv" style="text-align:center;font-weight:800;font-size:14px;padding:6px 8px;color:#ffc247">⏳ بانتظار البث...</div>
-  <div id="supl" style="text-align:center;font-size:14px;font-weight:800;color:#7CFFB2;padding:0 8px"></div>
+  <div id="guide" style="text-align:center;font-size:15px;font-weight:800;color:#ffc247;padding:6px 10px">✍️ اكتب اسم دولتك بالتعليقات · 👆 كبّس على الشاشة<br><span style="font-size:13px;color:#f4eedc">🛡️ ترفع حسابك فوق: اكتب اسم دولتك + شارك البث + كبّس 100 مرة + تابع الحساب المثبّت واكتب «تم»</span></div>
+  <div id="supl" style="display:flex;justify-content:center;padding:0 12px"><div id="supCard" style="display:none;align-items:center;gap:12px;width:100%;max-width:300px;padding:10px 12px;border-radius:18px;background:linear-gradient(135deg,rgba(255,194,71,.22),rgba(126,255,178,.14));border:2px solid #ffc247;box-shadow:0 0 16px rgba(255,194,71,.35)"><img id="supImg" alt="" style="width:54px;height:54px;border-radius:50%;border:2px solid #ffc247;object-fit:cover;flex:none;background:#223"><div style="flex:1;min-width:0"><div id="supT" style="font-size:16px;font-weight:900;color:#f4eedc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div><div id="supB" style="height:5px;border-radius:5px;background:rgba(255,255,255,.15);overflow:hidden;margin:6px 0 4px"><i style="display:block;height:100%;width:0;background:#7CFFB2;transition:width 1s linear"></i></div><div id="supN" style="font-size:12px;font-weight:700;color:#f4eedc"></div></div></div></div>
   <div class="ev" id="ev"></div>
   <div class="rank" id="rank"></div>
   <div id="more" style="display:none;font-size:13px;font-weight:700;color:#f4eedc;text-align:center;padding:6px 8px;line-height:1.9"></div>
@@ -211,33 +212,55 @@ function spotlight(who,cnt){
  e.style.display="flex";sfx("boom");
  clearTimeout(st.spT);st.spT=setTimeout(function(){e.style.display="none"},4500);
 }
-var SUP={ms:300000,gifts:10};
+var SUP={ms:180000,taps:100};
+st.queue=[];st.cur=null;
 function checkSup(who){
  var u=st.users[who],now=Date.now();
- if(!u||!u.c||(u.supU&&u.supU>now))return;
+ if(!u||!u.c)return;
+ if(st.cur&&st.cur.name===who)return;
+ if(st.queue.indexOf(who)>-1)return;
  var f=(st.fl||{})[who]||{};
- if((u.gv||0)>=SUP.gifts&&f.fo&&f.sh){
-  u.supU=now+SUP.ms;
-  ev("🛡️ "+who+" صار داعم! ثُبّت حسابه 5 دقايق",true);sfx("lead");supTick();
+ if(!(f.sh&&(u.tt||0)>=SUP.taps))return;
+ if(st.cur&&!(st.foSet&&st.foSet[who]))return;
+ if(!st.cur){
+  st.cur={name:who,until:now+SUP.ms};st.foSet={};
+  ev("🛡️ "+who+" ثُبّت حسابه 3 دقايق، تابعوه!",true);sfx("lead");
+ }else{
+  st.queue.push(who);
+  ev("⏳ "+who+" انضم للطابور، ييجي دوره بعد اللي قبله",true);
  }
+ supTick();
 }
-var lastEnter=0;
-function say(t){
- if(!SND||!("speechSynthesis" in window))return;
- try{var u=new SpeechSynthesisUtterance(t);u.lang="ar";u.rate=1.05;u.pitch=1.1;u.volume=1;speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}
-}
-function enter(who){var n=Date.now();if(n-lastEnter<2500)return;lastEnter=n;feed("دخل البث 👋","enter",who);say("هلا ونورت يا "+String(who).replace(/^@/,""))}
 function flag(who,key){st.fl=st.fl||{};st.fl[who]=st.fl[who]||{};st.fl[who][key]=1;checkSup(who)}
+function resetWho(w){var u=st.users[w];if(u){u.tt=0;u.cm=0;u.gc=0;u.gv=0;u.ts=0}if(st.fl)st.fl[w]=null}
 function supTick(){
- var now=Date.now(),parts=[],live=[];
- Object.keys(st.users).forEach(function(w){
-  var u=st.users[w];if(!u.supU)return;live.push([w,u.supU]);
-  if(u.supU<=now){u.supU=0;u.tt=0;u.cm=0;u.gc=0;u.gv=0;u.ts=0;if(st.fl)st.fl[w]=null;return}
-  var left=Math.ceil((u.supU-now)/1000);
-  parts.push(w+" ("+Math.floor(left/60)+":"+("0"+left%60).slice(-2)+")");
- });
- parts=live.sort(function(a,b){return b[1]-a[1]}).map(function(x){var left=Math.ceil((x[1]-now)/1000);return x[0]+" ("+Math.floor(left/60)+":"+("0"+left%60).slice(-2)+")"});
- var e=$("supl"),tx=parts.length?"🛡️ الداعمين: "+parts.join("  ·  "):"";if(e&&e.textContent!==tx)e.textContent=tx;
+ var now=Date.now();
+ if(st.cur&&now>=st.cur.until){
+  var done=st.cur.name;resetWho(done);st.cur=null;st.foSet={};
+  if(st.queue.length){
+   var nx=st.queue.shift();st.cur={name:nx,until:now+SUP.ms};st.foSet={};
+   ev("👑 "+nx+" صعد الحين! تابعوه",true);sfx("lead");
+  }
+ }
+ var card=$("supCard");if(!card)return;
+ if(!st.cur){
+  card.style.display="flex";
+  if($("supT").textContent!=="🛡️ المكان فاضي")$("supT").textContent="🛡️ المكان فاضي";
+  var en="أول واحد يكمل الشروط ينثبت هنا";
+  if($("supN").textContent!==en)$("supN").textContent=en;
+  $("supB").firstChild.style.width="0%";
+  var im=$("supImg");if(im.getAttribute("data-s")!=="none"){im.setAttribute("data-s","none");im.removeAttribute("src");im.style.visibility="hidden"}
+  return
+ }
+ card.style.display="flex";
+ var left=Math.max(0,Math.ceil((st.cur.until-now)/1000));
+ var t=$("supT"),lbl=st.cur.name+"  ⏱ "+Math.floor(left/60)+":"+("0"+left%60).slice(-2);
+ if(t.textContent!==lbl)t.textContent=lbl;
+ $("supB").firstChild.style.width=Math.max(0,Math.min(100,(st.cur.until-now)/SUP.ms*100))+"%";
+ var img=$("supImg"),av=(st.users[st.cur.name]||{}).av||"";
+ if(img.getAttribute("data-s")!==av){img.setAttribute("data-s",av);img.src=av||"";img.style.visibility=av?"visible":"hidden"}
+ var nt=st.queue.length?"التالي: "+st.queue.join("  ·  "):"";
+ if($("supN").textContent!==nt)$("supN").textContent=nt;
 }
 setInterval(supTick,1000);
 function tapPts(who,n){
@@ -260,6 +283,7 @@ function comment(who,text){
  rt.push(now);
  u.pts++;feed(t,"",who);
  u.cm=(u.cm||0)+1;checkSup(who);
+ if(isDone(text)&&st.cur&&who!==st.cur.name){st.foSet=st.foSet||{};st.foSet[who]=1;checkSup(who)}
  add(u.c,1);boom(u.c);
 }
 function gift(who,k,id,v){
@@ -391,7 +415,7 @@ if(LIVE){
   var ws=new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host+"/ws");
   ws.onopen=function(){setLv("🔌 متصل بالجسر، بانتظار البث...")};
   ws.onmessage=function(m){var d;try{d=JSON.parse(m.data)}catch(e){return}
-   if(d.t==="chat")comment(clean(d.u),String(d.c||"").slice(0,200));
+   if(d.t==="chat"){var cn=clean(d.u);comment(cn,String(d.c||"").slice(0,200));if(d.av&&st.users[cn])st.users[cn].av=d.av}
    else if(d.t==="enter")enter(clean(d.u));
    else if(d.t==="follow")flag(clean(d.u),"fo");
    else if(d.t==="share")flag(clean(d.u),"sh");
