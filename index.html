@@ -80,6 +80,7 @@ input{flex:1}
   <div class="rank" id="rank"></div>
   <div id="more" style="display:none;font-size:13px;font-weight:700;color:#f4eedc;text-align:center;padding:6px 8px;line-height:1.9"></div>
   <div class="pin" id="pin"><div class="av" id="pav"></div><div style="flex:1"><div class="h" id="ph"></div><div class="s" id="ps"></div><div class="bar"><i id="pb"></i></div></div></div>
+  <div id="welcome" style="display:none;text-align:center;background:rgba(126,255,178,.16);border:1px solid #7CFFB2;border-radius:12px;padding:8px 10px;font-weight:800;color:#d9ffe9"></div>
   <div class="gl" id="gl"></div>
   <div class="feed" id="feed"></div>
   <div class="fx" id="fx" aria-hidden="true"></div>
@@ -211,6 +212,13 @@ function spotlight(who,cnt){
  $("spotn").textContent=who;$("spots").textContent="🔥 كبّس "+cnt+" مرة! شجّعوه وارفعوا دولته";
  e.style.display="flex";sfx("boom");
  clearTimeout(st.spT);st.spT=setTimeout(function(){e.style.display="none"},4500);
+}
+var lastEnter=0;
+function enter(who){
+ var n=Date.now();if(n-lastEnter<2500)return;lastEnter=n;
+ var w=$("welcome");
+ if(w){w.textContent="👋 انضم "+who+" إلى البث، أهلاً وسهلاً!";w.style.display="block";clearTimeout(st.welT);st.welT=setTimeout(function(){w.style.display="none"},6000)}
+ feed("انضم إلى البث 👋","enter",who);
 }
 var SUP={ms:180000,taps:100};
 st.queue=[];st.cur=null;
