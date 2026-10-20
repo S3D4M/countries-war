@@ -264,7 +264,7 @@ function supTick(){
  $("supB").firstChild.style.width=Math.max(0,Math.min(100,(st.cur.until-now)/SUP.ms*100))+"%";
  var img=$("supImg"),av=(st.users[st.cur.name]||{}).av||"";
  if(img.getAttribute("data-s")!==av){img.setAttribute("data-s",av);img.src=av||"";img.style.visibility=av?"visible":"hidden"}
- var nt=st.sq.length?"التالي: "+st.sq.join("  ·  "):"تابع هذا الحساب وطبّق الشروط لتصعد مكانه";
+ var nt=st.sq.length?"التالي: "+st.sq.join("  ·  "):"اكتب اسم دولتك · تابع الحساب · اكبس 100 مرة · شارك البث · اكتب تم لتصعد مكانه";
  if($("supN").textContent!==nt)$("supN").textContent=nt;
 }
 setInterval(supTick,1000);
