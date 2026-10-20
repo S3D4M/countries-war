@@ -32,6 +32,7 @@ function userId(d) {
     d?.userInfo?.unique_id || d?.uniqueId || d?.unique_id;
 }
 function eventData(m) { return m?.data || m?.message || m?.msg || m?.payload || m; }
+function avatarUrl(d) { return d?.user?.profilePictureUrl || d?.user?.profilePicture?.urls?.[0] || d?.userInfo?.profilePictureUrl || d?.avatar || ""; }
 function eventType(m) {
   return String(m?.type || m?.event || m?.method || m?.name || '').toLowerCase();
 }
@@ -64,7 +65,7 @@ function handleMessage(raw) {
       const comment = d?.comment || d?.content || d?.message;
       if (who && comment) {
         console.log('تعليق من', who, ':', comment);
-        send({ t: 'chat', u: who, c: comment });
+        send({ t: 'chat', u: who, c: comment, av: avatarUrl(d) });
       }
       continue;
     }
