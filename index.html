@@ -75,7 +75,7 @@ input{flex:1}
   <div class="top"><b>🏆 حرب الدول</b><span class="rt" id="rt"></span><span class="gap" id="gap"></span></div>
   <div id="lv" style="text-align:center;font-weight:800;font-size:14px;padding:6px 8px;color:#ffc247">⏳ بانتظار البث...</div>
   <div id="guide" style="text-align:center;font-size:15px;font-weight:800;color:#ffc247;padding:6px 10px">✍️ اكتب اسم دولتك بالتعليقات · 👆 كبّس على الشاشة<br><span style="font-size:13px;color:#f4eedc">🛡️ ترفع حسابك فوق: اكتب اسم دولتك + شارك البث + كبّس 100 مرة + تابع الحساب المثبّت واكتب «تم»</span></div>
-  <div id="supl" style="display:flex;justify-content:center;padding:0 12px"><div id="supCard" style="display:none;align-items:center;gap:12px;width:100%;max-width:300px;padding:10px 12px;border-radius:18px;background:linear-gradient(135deg,rgba(255,194,71,.22),rgba(126,255,178,.14));border:2px solid #ffc247;box-shadow:0 0 16px rgba(255,194,71,.35)"><img id="supImg" alt="" style="width:54px;height:54px;border-radius:50%;border:2px solid #ffc247;object-fit:cover;flex:none;background:#223"><div style="flex:1;min-width:0"><div id="supT" style="font-size:16px;font-weight:900;color:#f4eedc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div><a id="supFollow" href="#" target="_blank" rel="noopener" style="display:inline-block;background:#7CFFB2;color:#10261b;border-radius:9px;padding:3px 8px;margin-top:4px;font-size:12px;font-weight:900;text-decoration:none"></a><div id="supB" style="height:5px;border-radius:5px;background:rgba(255,255,255,.15);overflow:hidden;margin:6px 0 4px"><i style="display:block;height:100%;width:0;background:#7CFFB2;transition:width 1s linear"></i></div><div id="supN" style="font-size:12px;font-weight:700;color:#f4eedc"></div></div></div></div>
+  <div id="supl" style="display:flex;justify-content:center;padding:0 12px"><div id="supCard" style="display:none;align-items:center;gap:14px;width:100%;max-width:360px;padding:12px 14px;border-radius:18px;background:linear-gradient(135deg,rgba(255,194,71,.22),rgba(126,255,178,.14));border:2px solid #ffc247;box-shadow:0 0 16px rgba(255,194,71,.35)"><img id="supImg" alt="صورة الحساب المثبّت" style="width:72px;height:72px;border-radius:50%;border:2px solid #ffc247;object-fit:cover;flex:none;background:#223"><div style="flex:1;min-width:0"><div id="supT" style="font-size:23px;font-weight:950;color:#fff;direction:ltr;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div><a id="supFollow" href="#" target="_blank" rel="noopener" style="display:inline-block;background:#7CFFB2;color:#10261b;border-radius:9px;padding:5px 10px;margin-top:5px;font-size:14px;font-weight:900;text-decoration:none"></a><div id="supB" style="height:6px;border-radius:5px;background:rgba(255,255,255,.15);overflow:hidden;margin:8px 0 5px"><i style="display:block;height:100%;width:0;background:#7CFFB2;transition:width 1s linear"></i></div><div id="supN" style="font-size:12px;font-weight:700;color:#f4eedc;line-height:1.5"></div></div></div></div>
   <div class="ev" id="ev"></div>
   <div class="rank" id="rank"></div>
   <div id="more" style="display:none;font-size:13px;font-weight:700;color:#f4eedc;text-align:center;padding:6px 8px;line-height:1.9"></div>
@@ -257,8 +257,7 @@ function supTick(){
   return
  }
  card.style.display="flex";
- var left=Math.max(0,Math.ceil((st.cur.until-now)/1000));
- var t=$("supT"),lbl=st.cur.name+"  ⏱ "+Math.floor(left/60)+":"+("0"+left%60).slice(-2);
+ var t=$("supT"),lbl="@"+String(st.cur.name).replace(/^@/,"");
  if(t.textContent!==lbl)t.textContent=lbl;
  var sf=$("supFollow");if(sf){sf.textContent="➕ متابعة "+st.cur.name;sf.href="https://www.tiktok.com/"+st.cur.name;}
  $("supB").firstChild.style.width=Math.max(0,Math.min(100,(st.cur.until-now)/SUP.ms*100))+"%";
