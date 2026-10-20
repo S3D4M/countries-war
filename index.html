@@ -214,11 +214,8 @@ function spotlight(who,cnt){
  clearTimeout(st.spT);st.spT=setTimeout(function(){e.style.display="none"},4500);
 }
 var lastEnter=0;
-function enter(who){
- var n=Date.now();if(n-lastEnter<2500)return;lastEnter=n;
- var w=$("welcome");if(w){w.textContent="👋 انضم "+who+" إلى البث، أهلاً وسهلاً!";w.style.display="block";clearTimeout(st.welT);st.welT=setTimeout(function(){w.style.display="none"},6000)}
- feed("انضم إلى البث 👋","enter",who);
-}
+function enter(who){var n=Date.now();if(n-lastEnter<2500)return;lastEnter=n;var w=$("welcome");if(w){w.textContent="👋 انضم "+who+" إلى البث، أهلاً وسهلاً!";w.style.display="block";clearTimeout(st.welT);st.welT=setTimeout(function(){w.style.display="none"},6000)}feed("انضم إلى البث 👋","enter",who)}
+
 var SUP={ms:180000,taps:100};
 st.sq=[];st.cur=null;
 function checkSup(who){
@@ -227,8 +224,8 @@ function checkSup(who){
  if(st.cur&&st.cur.name===who)return;
  if(st.sq.indexOf(who)>-1)return;
  var f=(st.fl||{})[who]||{};
- if(!(f.sh&&(u.tt||0)>=SUP.taps))return;
- if(st.cur&&!(st.foSet&&st.foSet[who])&&!u.confirmed)return;
+ if(!(f.sh&&(u.tt||0)>=SUP.taps||u.confirmed))return;
+ if(!(st.foSet&&st.foSet[who]))return;
  if(!st.cur){
   st.cur={name:who,until:now+SUP.ms};st.foSet={};
   ev("🛡️ "+who+" ثُبّت حسابه 3 دقايق، تابعوه!",true);sfx("lead");
@@ -282,11 +279,7 @@ function tapPts(who,n){
 function comment(who,text){
  if(st.over)return;
  var t=text.trim();if(!t)return;
- if(isDone(t)){
-  if(st.pin)follow(who);
-  else{st.fl=st.fl||{};st.fl[who]=st.fl[who]||{};st.fl[who].fo=1;st.fl[who].sh=1;var cu=st.users[who];if(cu)cu.confirmed=1;st.foSet=st.foSet||{};st.foSet[who]=1;feed("✅ تم تسجيل شروط "+who,"g",who);ev("✅ تم تسجيل الشروط لـ "+who);checkSup(who)}
-  return;
- }
+ if(isDone(t)){if(st.pin)follow(who);else{st.fl=st.fl||{};st.fl[who]=st.fl[who]||{};st.fl[who].fo=1;st.fl[who].sh=1;var cu=st.users[who];if(cu)cu.confirmed=1;st.foSet=st.foSet||{};st.foSet[who]=1;feed("✅ تم تسجيل شروط "+who,"g",who);ev("✅ تم تسجيل الشروط لـ "+who);checkSup(who)}return}
  var id=detect(t),u=st.users[who];
  if(!u){if(!id){feed(t,"",who);ev("👋 "+who+" اكتب اسم دولتك لتنضم");return}join(who,id);u=st.users[who]}
  var now=Date.now(),rt=st.rate[who]=(st.rate[who]||[]).filter(function(x){return now-x<10000});
@@ -421,7 +414,7 @@ $("rst").onclick=function(){var b=this;
  b._t=setTimeout(function(){delete b.dataset.s;b.textContent="🔄 تصفير اللعبة"},3000)};
 var LIVE=/[?&]live/.test(location.search);
 if(LIVE){
-  st.bots=false;resetGame(true);var pn=document.querySelector(".panel");if(pn)pn.style.display="none";var guide=document.querySelector("#guide"),welcome=document.querySelector("#welcome");if(guide)guide.style.display="none";if(welcome){welcome.style.display="block";welcome.textContent="👋 أهلاً بالمشاهدين الجدد!"}
+ st.bots=false;resetGame(true);var pn=document.querySelector(".panel");if(pn)pn.style.display="none";var guide=document.querySelector("#guide"),welcome=document.querySelector("#welcome");if(guide)guide.style.display="none";if(welcome){welcome.style.display="block";welcome.textContent="👋 أهلاً بالمشاهدين الجدد!"}
  (function conn(){
   var ws=new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host+"/ws");
   ws.onopen=function(){setLv("🔌 متصل بالجسر، بانتظار البث...")};
