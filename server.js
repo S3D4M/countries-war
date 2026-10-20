@@ -82,7 +82,8 @@ function handleMessage(raw) {
       continue;
     }
     if (type.includes('like')) {
-      if (who) send({ t: 'like', u: who, n: d?.likeCount || d?.like_count || 1 });
+      const likes = d?.likeCount || d?.like_count || d?.count || d?.totalLikeCount || d?.total_like_count || 1;
+      if (who) send({ t: 'like', u: who, n: Number(likes) || 1 });
       continue;
     }
     if (type.includes('member') || type.includes('join') || type.includes('roomuser')) {

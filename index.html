@@ -266,7 +266,7 @@ setInterval(supTick,1000);
 function tapPts(who,n){
  if(st.over)return;
  var u=st.users[who];if(!u)return;
- var now=Date.now();if(u.tl&&now-u.tl<100)return;u.tl=now;
+ var now=Date.now();u.tl=now;
  var p=Math.min(5,Math.max(1,Math.round((n||1)/10)));
  u.pts+=p;add(u.c,p);
  u.tt=(u.tt||0)+(n||1);checkSup(who);
