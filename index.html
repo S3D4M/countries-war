@@ -80,6 +80,7 @@ input{flex:1}
   <div class="rank" id="rank"></div>
   <div id="more" style="display:none;font-size:13px;font-weight:700;color:#f4eedc;text-align:center;padding:6px 8px;line-height:1.9"></div>
   <div class="pin" id="pin"><div class="av" id="pav"></div><div style="flex:1"><div class="h" id="ph"></div><div class="s" id="ps"></div><div class="bar"><i id="pb"></i></div></div></div>
+  <div id="welcome" style="display:none;text-align:center;background:rgba(126,255,178,.16);border:1px solid #7CFFB2;border-radius:12px;padding:8px 10px;font-weight:800;color:#d9ffe9"></div>
   <div class="gl" id="gl"></div>
   <div class="feed" id="feed"></div>
   <div class="fx" id="fx" aria-hidden="true"></div>
@@ -212,6 +213,12 @@ function spotlight(who,cnt){
  e.style.display="flex";sfx("boom");
  clearTimeout(st.spT);st.spT=setTimeout(function(){e.style.display="none"},4500);
 }
+var lastEnter=0;
+function enter(who){
+ var n=Date.now();if(n-lastEnter<2500)return;lastEnter=n;
+ var w=$("welcome");if(w){w.textContent="👋 انضم "+who+" إلى البث، أهلاً وسهلاً!";w.style.display="block";clearTimeout(st.welT);st.welT=setTimeout(function(){w.style.display="none"},6000)}
+ feed("انضم إلى البث 👋","enter",who);
+}
 var SUP={ms:180000,taps:100};
 st.sq=[];st.cur=null;
 function checkSup(who){
@@ -221,7 +228,7 @@ function checkSup(who){
  if(st.sq.indexOf(who)>-1)return;
  var f=(st.fl||{})[who]||{};
  if(!(f.sh&&(u.tt||0)>=SUP.taps))return;
- if(!(st.foSet&&st.foSet[who]))return;
+ if(st.cur&&!(st.foSet&&st.foSet[who])&&!u.confirmed)return;
  if(!st.cur){
   st.cur={name:who,until:now+SUP.ms};st.foSet={};
   ev("🛡️ "+who+" ثُبّت حسابه 3 دقايق، تابعوه!",true);sfx("lead");
@@ -266,7 +273,7 @@ setInterval(supTick,1000);
 function tapPts(who,n){
  if(st.over)return;
  var u=st.users[who];if(!u)return;
- var now=Date.now();if(u.tl&&now-u.tl<1500)return;u.tl=now;
+ var now=Date.now();u.tl=now;
  var p=Math.min(5,Math.max(1,Math.round((n||1)/10)));
  u.pts+=p;add(u.c,p);
  u.tt=(u.tt||0)+(n||1);checkSup(who);
@@ -275,7 +282,11 @@ function tapPts(who,n){
 function comment(who,text){
  if(st.over)return;
  var t=text.trim();if(!t)return;
- if(st.pin&&isDone(t)){follow(who);return}
+ if(isDone(t)){
+  if(st.pin)follow(who);
+  else{st.fl=st.fl||{};st.fl[who]=st.fl[who]||{};st.fl[who].fo=1;st.fl[who].sh=1;var cu=st.users[who];if(cu)cu.confirmed=1;st.foSet=st.foSet||{};st.foSet[who]=1;feed("✅ تم تسجيل شروط "+who,"g",who);ev("✅ تم تسجيل الشروط لـ "+who);checkSup(who)}
+  return;
+ }
  var id=detect(t),u=st.users[who];
  if(!u){if(!id){feed(t,"",who);ev("👋 "+who+" اكتب اسم دولتك لتنضم");return}join(who,id);u=st.users[who]}
  var now=Date.now(),rt=st.rate[who]=(st.rate[who]||[]).filter(function(x){return now-x<10000});
