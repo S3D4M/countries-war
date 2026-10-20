@@ -266,7 +266,7 @@ setInterval(supTick,1000);
 function tapPts(who,n){
  if(st.over)return;
  var u=st.users[who];if(!u)return;
- var now=Date.now();if(u.tl&&now-u.tl<1500)return;u.tl=now;
+ var now=Date.now();if(u.tl&&now-u.tl<100)return;u.tl=now;
  var p=Math.min(5,Math.max(1,Math.round((n||1)/10)));
  u.pts+=p;add(u.c,p);
  u.tt=(u.tt||0)+(n||1);checkSup(who);
@@ -277,7 +277,7 @@ function comment(who,text){
  var t=text.trim();if(!t)return;
  if(isDone(t)){
   if(st.pin)follow(who);
-  else{st.fl=st.fl||{};st.fl[who]=st.fl[who]||{};st.fl[who].fo=1;feed("✅ تابع الحساب المثبّت","g",who);ev("✅ تم تسجيل متابعة "+who);checkSup(who)}
+  else{st.fl=st.fl||{};st.fl[who]=st.fl[who]||{};st.fl[who].fo=1;st.fl[who].sh=1;feed("✅ تابع وشارك الحساب المثبّت","g",who);ev("✅ تم تسجيل المتابعة والمشاركة لـ "+who);checkSup(who)}
   return;
  }
  var id=detect(t),u=st.users[who];
