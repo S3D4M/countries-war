@@ -220,7 +220,7 @@ function checkSup(who){
  if(st.cur&&st.cur.name===who)return;
  if(st.queue.indexOf(who)>-1)return;
  var f=(st.fl||{})[who]||{};
- if(!(f.sh&&(u.tt||0)>=SUP.taps))return;
+ if(!(f.sh&&(u.tt||0)>=SUP.taps||u.confirmed))return;
  if(st.cur&&!(st.foSet&&st.foSet[who]))return;
  if(!st.cur){
   st.cur={name:who,until:now+SUP.ms};st.foSet={};
@@ -277,7 +277,7 @@ function comment(who,text){
  var t=text.trim();if(!t)return;
  if(isDone(t)){
   if(st.pin)follow(who);
-  else{st.fl=st.fl||{};st.fl[who]=st.fl[who]||{};st.fl[who].fo=1;st.fl[who].sh=1;feed("✅ تابع وشارك الحساب المثبّت","g",who);ev("✅ تم تسجيل المتابعة والمشاركة لـ "+who);checkSup(who)}
+  else{st.fl=st.fl||{};st.fl[who]=st.fl[who]||{};st.fl[who].fo=1;st.fl[who].sh=1;var cu=st.users[who];if(cu)cu.confirmed=1;feed("✅ تابع وشارك الحساب المثبّت","g",who);ev("✅ تم تسجيل الشروط لـ "+who);checkSup(who)}
   return;
  }
  var id=detect(t),u=st.users[who];
