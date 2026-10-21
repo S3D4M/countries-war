@@ -1,87 +1,170 @@
-// جسر مباشر: يقرأ أحداث TikTok ويرسلها بصيغة اللعبة الجديدة
 import http from 'node:http';
 import { readFileSync } from 'node:fs';
 import WebSocket, { WebSocketServer } from 'ws';
+import {
+  TikTokLiveConnection,
+  WebcastEvent,
+  ControlEvent
+} from 'tiktok-live-connector';
 
-const USER = (process.env.TIKTOK_USERNAME || process.env.TIKTOK_USER || 'prnk911').replace(/^@/, '').trim();
-const KEY = process.env.EULER_API_KEY || process.env.SIGN_API_KEY || '';
+const USER = (process.env.TIKTOK_USER || process.env.TIKTOK_USERNAME || 'prnk911')
+  .replace(/^@/, '')
+  .trim();
 const PORT = process.env.PORT || 3000;
-const EULER_URL = 'wss://ws.eulerstream.com';
-
 const page = readFileSync(new URL('./index.html', import.meta.url));
-const state = { connected: false, events: 0, last: null, error: null };
-let wss;
 
+const state = { connected: false, events: 0, last: null, error: null };
 const server = http.createServer((req, res) => {
-  const u = new URL(req.url, 'http://localhost');
-  if (u.pathname === '/health') {
-    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
-    res.end(JSON.stringify({ ok: true, user: USER, tiktokConnected: state.connected, viewersPages: wss?.clients.size || 0, events: state.events, lastEvent: state.last, error: state.error }));
+  const url = new URL(req.url, 'http://localhost');
+  if (url.pathname === '/health') {
+    res.writeHead(200, {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'no-store'
+    });
+    res.end(JSON.stringify({
+      ok: true,
+      user: USER,
+      tiktokConnected: state.connected,
+      events: state.events,
+      lastEvent: state.last,
+      error: state.error
+    }));
     return;
   }
-  if (u.pathname === '/' || u.pathname === '/index.html') {
-    if (!u.searchParams.has('ws')) { u.searchParams.set('ws', 'auto'); res.writeHead(302, { location: u.pathname + '?' + u.searchParams.toString() }); res.end(); return; }
-    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+  if (url.pathname === '/' || url.pathname === '/index.html') {
+    if (!url.searchParams.has('ws')) {
+      url.searchParams.set('ws', 'auto');
+      res.writeHead(302, { location: url.pathname + '?' + url.searchParams.toString() });
+      res.end();
+      return;
+    }
+    res.writeHead(200, {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'no-store'
+    });
     res.end(page);
     return;
   }
-  res.writeHead(404); res.end('not found');
+  res.writeHead(404);
+  res.end('not found');
 });
 
-wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({ server });
 function send(event, data) {
-  const msg = JSON.stringify({ event, data });
-  for (const client of wss.clients) if (client.readyState === WebSocket.OPEN) client.send(msg);
-}
-function setConnection(connected, error = null) {
-  state.connected = connected; state.error = error; send('status', { connected, user: USER, error });
-}
-function userId(d) {
-  return d?.user?.uniqueId || d?.user?.unique_id || d?.user?.unique_id_name || d?.user?.displayId || d?.user?.display_id || d?.userInfo?.uniqueId || d?.userInfo?.unique_id || d?.uniqueId || d?.unique_id || d?.username;
-}
-function eventData(m) { return m?.data || m?.message || m?.msg || m?.payload || m; }
-function eventType(m) { return String(m?.type || m?.event || m?.method || m?.name || '').toLowerCase(); }
-
-function handleMessage(raw) {
-  let packet;
-  try { packet = JSON.parse(raw.toString()); } catch { return; }
-  const messages = Array.isArray(packet?.messages) ? packet.messages : [packet];
-  for (const msg of messages) {
-    const d = eventData(msg); const type = eventType(msg); const who = userId(d) || userId(msg);
-    if (!who) continue;
-    if (type.includes('chat') || type.includes('comment')) {
-      const comment = d?.comment || d?.content || d?.message || d?.text;
-      if (comment) { state.last = 'chat'; state.events++; console.log('تعليق من', who, ':', comment); send('chat', { uniqueId: who, nickname: who, comment }); }
-    } else if (type.includes('gift')) {
-      const giftType = d?.giftType ?? d?.gift_type; const repeatEnd = d?.repeatEnd ?? d?.repeat_end;
-      if (giftType === 1 && repeatEnd === false) continue;
-      const diamonds = Number(d?.diamondCount || d?.diamond_count || d?.giftDetails?.diamondCount || d?.gift?.diamondCount || d?.diamonds || 1) * Number(d?.repeatCount || d?.repeat_count || 1);
-      state.last = 'gift'; state.events++; send('gift', { uniqueId: who, nickname: who, diamondCount: diamonds, repeatCount: 1 });
-    } else if (type.includes('like')) {
-      const likes = Number(d?.likeCount || d?.like_count || d?.count || d?.likeNum || d?.like_num || d?.totalLikeCount || d?.total_like_count || 1) || 1;
-      state.last = 'like'; state.events++; console.log('تكبيس من', who, ':', likes); send('like', { uniqueId: who, nickname: who, likeCount: likes });
-    } else if (type.includes('member') || type.includes('join') || type.includes('roomuser')) {
-      state.last = 'member'; state.events++; send('member', { uniqueId: who, nickname: who });
-    }
+  const message = JSON.stringify({ event, data });
+  for (const client of wss.clients) {
+    if (client.readyState === WebSocket.OPEN) client.send(message);
   }
 }
-
-let conn = null; let retryTimer = null; let stopped = false;
-function start() {
-  if (!KEY || stopped || conn) return;
-  const url = `${EULER_URL}?uniqueId=${encodeURIComponent(USER)}&apiKey=${encodeURIComponent(KEY)}`;
-  console.log('محاولة الاتصال ببث', USER);
-  conn = new WebSocket(url);
-  conn.on('open', () => { console.log('اتصال Euler المباشر مفتوح'); setConnection(true); });
-  conn.on('message', handleMessage);
-  conn.on('error', e => { state.error = String(e?.message || e); console.error('خطأ Euler:', state.error); });
-  conn.on('close', (code, reason) => {
-    const why = reason?.toString() || ''; conn = null; setConnection(false, `Euler closed ${code}${why ? `: ${why}` : ''}`); console.error(state.error);
-    if (!stopped) { clearTimeout(retryTimer); retryTimer = setTimeout(() => { retryTimer = null; start(); }, code === 4404 ? 15000 : 10000); }
-  });
+function userData(data) {
+  const user = data?.user || {};
+  return {
+    uniqueId: user.uniqueId || data?.uniqueId || data?.unique_id || '',
+    nickname: user.nickname || user.uniqueId || data?.nickname || data?.uniqueId || ''
+  };
+}
+function setStatus(connected, error = null) {
+  state.connected = connected;
+  state.error = error;
+  send('status', { connected, user: USER, error });
 }
 
-wss.on('connection', ws => ws.send(JSON.stringify({ event: 'status', data: { connected: state.connected, user: USER, error: state.error } })));
-server.listen(PORT, () => { console.log('server on port ' + PORT + ' | account @' + USER); start(); });
-process.on('SIGTERM', () => { stopped = true; clearTimeout(retryTimer); try { conn?.close(); } catch {} server.close(); });
-process.on('SIGINT', () => { stopped = true; clearTimeout(retryTimer); try { conn?.close(); } catch {} server.close(); });
+let connection = null;
+let retryTimer = null;
+let stopped = false;
+function scheduleReconnect() {
+  if (stopped || retryTimer) return;
+  retryTimer = setTimeout(() => {
+    retryTimer = null;
+    connectTikTok();
+  }, 30000);
+}
+function handleError(error) {
+  state.error = String(error?.message || error);
+  console.error('TikTok connection error:', state.error);
+  setStatus(false, state.error);
+  scheduleReconnect();
+}
+function connectTikTok() {
+  if (stopped || connection?.isConnected || connection?.isConnecting) return;
+  connection = new TikTokLiveConnection(USER, {
+    // لا نمرر SIGN_API_KEY هنا حتى لا يعود الاتصال إلى EulerStream.
+    processInitialData: false,
+    fetchRoomInfoOnConnect: false
+  });
+  console.log('محاولة اتصال مباشر بحساب', USER);
+
+  connection.on(WebcastEvent.CHAT, data => {
+    const u = userData(data);
+    if (!u.uniqueId || !data.comment) return;
+    state.events++;
+    state.last = 'chat';
+    console.log('تعليق من', u.uniqueId, ':', data.comment);
+    send('chat', { ...u, comment: data.comment });
+  });
+
+  connection.on(WebcastEvent.LIKE, data => {
+    const u = userData(data);
+    if (!u.uniqueId) return;
+    state.events++;
+    state.last = 'like';
+    send('like', { ...u, likeCount: Number(data.likeCount || 1) });
+  });
+
+  connection.on(WebcastEvent.GIFT, data => {
+    if (data.giftType === 1 && data.repeatEnd === false) return;
+    const u = userData(data);
+    if (!u.uniqueId) return;
+    state.events++;
+    state.last = 'gift';
+    send('gift', {
+      ...u,
+      diamondCount: Number(data.diamondCount || data.giftDetails?.diamondCount || 1),
+      repeatCount: Number(data.repeatCount || 1)
+    });
+  });
+
+  connection.on(WebcastEvent.MEMBER, data => {
+    const u = userData(data);
+    if (!u.uniqueId) return;
+    state.events++;
+    state.last = 'member';
+    send('member', u);
+  });
+
+  connection.on(ControlEvent.DISCONNECTED, () => {
+    connection = null;
+    setStatus(false, 'TikTok disconnected');
+    scheduleReconnect();
+  });
+  connection.on(ControlEvent.ERROR, handleError);
+
+  connection.connect()
+    .then(() => {
+      state.error = null;
+      setStatus(true);
+      console.log('TikTok direct connection live:', USER);
+    })
+    .catch(handleError);
+}
+
+wss.on('connection', ws => {
+  ws.send(JSON.stringify({
+    event: 'status',
+    data: { connected: state.connected, user: USER, error: state.error }
+  }));
+});
+
+server.listen(PORT, () => {
+  console.log(`server on port ${PORT} | direct TikTok connector | @${USER}`);
+  connectTikTok();
+});
+
+function shutdown() {
+  stopped = true;
+  clearTimeout(retryTimer);
+  try { connection?.disconnect(); } catch {}
+  server.close();
+}
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
