@@ -50,7 +50,7 @@ body{background:radial-gradient(ellipse at 50% -10%,#203263 0,transparent 48%),r
 </main><aside id="settingsPanel" class="settings-panel" aria-label="إعدادات العرض"><div class="settings-head"><b>⚙️ تخصيص العرض</b><button id="settingsClose" class="settings-close" aria-label="إغلاق">×</button></div><label>حجم اللعبة <output id="scaleValue">100%</output><input id="scaleRange" type="range" min="50" max="150" value="100" step="1"></label><label>الموضع العمودي <output id="offsetValue">0px</output><input id="offsetRange" type="range" min="-240" max="240" value="0" step="1"></label><label>الخلفية<select id="bgSelect"><option value="space">فضاء أزرق</option><option value="navy">كحلي هادئ</option><option value="purple">بنفسجي</option><option value="black">أسود</option><option value="custom">لون مخصص</option></select></label><input id="bgColor" type="color" value="#070a14" aria-label="اختيار لون الخلفية"><button id="settingsReset" class="settings-reset">إرجاع الافتراضي</button></aside><script>
 (function(){
 const Q=new URLSearchParams(location.search);if(Q.get('view')==='portrait')document.body.className='portrait';
-const CFG={ROUND_SECS:+Q.get('round')||300,JOIN_PTS:20,LIKE_PTS:1,GIFT_MULT:10,BREAK_SECS:+Q.get('break')||10,USER:(Q.get('user')||'prnk911').replace(/^@/,''),WS:(Q.get('ws')==='auto'?(location.protocol==='https:'?'wss://':'ws://')+location.host:Q.get('ws'))||''};
+const CFG={ROUND_SECS:+Q.get('round')||300,JOIN_PTS:20,COMMENT_PTS:1,LIKE_PTS:1,GIFT_MULT:10,BREAK_SECS:+Q.get('break')||10,USER:(Q.get('user')||'prnk911').replace(/^@/,''),WS:(Q.get('ws')==='auto'?(location.protocol==='https:'?'wss://':'ws://')+location.host:Q.get('ws'))||''};
 const $=id=>document.getElementById(id);
 const esc=x=>String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt=n=>Number(n).toLocaleString('en-US');
@@ -85,17 +85,20 @@ let cQ=[],cBusy=false;
 function showCenter(it,front){if(front)cQ.unshift(it);else cQ.push(it);while(cQ.filter(x=>!x.win&&!x.evt).length>6)cQ.splice(cQ.findIndex(x=>!x.win&&!x.evt),1);if(!cBusy)nextC()}
 function nextC(){const g=cQ.shift();if(!g){cBusy=false;return}cBusy=true;const box=$('giftEvent');box.firstElementChild.className='ge-box'+(g.win?' win':'')+(g.evt?' ev':'');$('geIcon').textContent=g.icon||'🎁';$('geUser').textContent=g.title;$('geText').textContent=g.text||'';$('gePts').textContent=g.pts||'';box.classList.add('show');if(g.win)sfxWin();else if(g.evt)sfxEvent();else sfxGift(g.big);setTimeout(()=>{box.classList.remove('show');setTimeout(nextC,300)},g.ms||2500)}
 let tQ=[],tBusy=false;
-function toast(t,name,code){const same=tQ.filter(x=>x.t===t);if(same.length>=3){const n=same.reduce((a,x)=>a+(x.n||1),0)+1;tQ=tQ.filter(x=>x.t!==t);tQ.push({t:t,name:same[0].name,n:n})}else tQ.push({t:t,name:name,code:code});if(!tBusy)nextT()}
+	function toast(t,name,code,extra){if(t==='l'){const old=tQ.find(x=>x.t==='l'&&x.name===name);if(old){old.n+=(extra?.likes||1);old.points+=(extra?.points||0)}else tQ.push({t:t,name:name,code:code,n:extra?.likes||1,points:extra?.points||0})}else tQ.push({t:t,name:name,code:code,...(extra||{})});if(!tBusy)nextT()}
 function nextT(){const x=tQ.shift();if(!x){tBusy=false;return}tBusy=true;const box=$('welcomeEvent'),nm=esc(x.name);let h;
-if(x.t==='w')h=x.n?'<b>أهلًا وسهلًا بـ '+nm+' و'+(x.n-1)+' آخرين!</b> نورتوا حرب الدول 👑':'<b>أهلًا وسهلًا بـ '+nm+'!</b> نورت حرب الدول 👑';
-else if(x.t==='f')h='<b>تابع @'+CFG.USER+'</b> وفعّل 🔔 ما تفوّت الجولة الجاية';else h=x.n?'<b>'+nm+' و'+(x.n-1)+' آخرين</b> انضموا للحرب':'<b>'+nm+'</b> انضم إلى '+F[x.code]+' '+N[x.code];
-$('weWave').textContent=x.t==='w'?'👋':x.t==='f'?'❤️':'⚔️';$('weText').innerHTML=h;box.classList.add('show');if(x.t==='w'||x.t==='f')sfxWelcome();else sfxJoin();setTimeout(()=>{box.classList.remove('show');setTimeout(nextT,300)},x.t==='j'?2200:3000)}
+	if(x.t==='w')h='<b>أهلًا وسهلًا بـ '+nm+'!</b> نورت حرب الدول 👑';
+	else if(x.t==='f')h='<b>تابع @'+CFG.USER+'</b> وفعّل 🔔 ما تفوّت الجولة الجاية';
+	else if(x.t==='l')h='<b>👆 '+nm+' كبّس '+fmt(x.n)+' مرة</b> · +'+fmt(x.points)+' نقطة';
+	else if(x.t==='c')h='<b>💬 '+nm+'</b> كتب: «'+esc(x.note||'')+'» · +'+fmt(x.points||0)+' نقطة';
+	else h='<b>'+nm+'</b> انضم إلى '+F[x.code]+' '+N[x.code]+(x.points?' · +'+fmt(x.points)+' نقطة':'');
+	$('weWave').textContent=x.t==='w'?'👋':x.t==='f'?'❤️':x.t==='l'?'👆':x.t==='c'?'💬':'⚔️';$('weText').innerHTML=h;box.classList.add('show');if(x.t==='w'||x.t==='f')sfxWelcome();else sfxJoin();setTimeout(()=>{box.classList.remove('show');setTimeout(nextT,300)},x.t==='j'?2200:3000)}
 const seen={};
 function onJoin(id,name){const now=Date.now();if(seen[id]&&now-seen[id]<120000)return;seen[id]=now;toast('w',name)}
-function onChat(id,name,text){const code=detect(text);if(!code)return;const u=S.users[id];
-if(u){if(code!==u.code&&!u.changed&&S.phase==='play'&&u.t&&Date.now()-u.t<60000){const old=u.code,mv=Math.min(u.contrib||0,S.pts[old]||0);S.pts[old]=(S.pts[old]||0)-mv;S.pts[code]=(S.pts[code]||0)+mv;u.code=code;u.changed=true;if(S.sup[id])S.sup[id].code=code;up.add(code);sched();toast('j',name,code)}return}
-S.users[id]={name:name,code:code,t:Date.now(),contrib:0,changed:false};addPts(code,CFG.JOIN_PTS,'join',id);const p=S.pend[id];if(p){addPts(code,p,'pend',id);delete S.pend[id]}if(S.sup[id])S.sup[id].code=code;toast('j',name,code)}
-function onLike(id,n){const u=S.users[id];if(u&&n>0)addPts(u.code,Math.min(n,50)*CFG.LIKE_PTS,'like',id)}
+	function onChat(id,name,text){const code=detect(text);if(!code)return;const u=S.users[id];
+	if(u){if(code!==u.code&&!u.changed&&S.phase==='play'&&u.t&&Date.now()-u.t<60000){const old=u.code,mv=Math.min(u.contrib||0,S.pts[old]||0);S.pts[old]=(S.pts[old]||0)-mv;S.pts[code]=(S.pts[code]||0)+mv;u.code=code;u.changed=true;if(S.sup[id])S.sup[id].code=code;up.add(code);sched()}const points=addPts(u.code,CFG.COMMENT_PTS,'comment',id);toast('c',name,u.code,{note:text,points});return}
+	S.users[id]={name:name,code:code,t:Date.now(),contrib:0,changed:false};const points=addPts(code,CFG.JOIN_PTS,'join',id);const p=S.pend[id];if(p){addPts(code,p,'pend',id);delete S.pend[id]}if(S.sup[id])S.sup[id].code=code;toast('j',name,code,{points})}
+	function onLike(id,n){const u=S.users[id];if(u&&n>0){const likes=Math.min(n,50),points=addPts(u.code,likes*CFG.LIKE_PTS,'like',id);toast('l',u.name,u.code,{likes,points})}}
 function onGift(id,name,diamonds,repeat){const coins=Math.max(1,diamonds||1)*Math.max(1,repeat||1),pts=coins*CFG.GIFT_MULT,u=S.users[id];
 const s=S.sup[id]=S.sup[id]||{name:name,coins:0,code:u?u.code:null};s.coins+=coins;s.name=name;
 if(u){const ap=addPts(u.code,pts,'gift',id);showCenter({title:name,text:'أرسل هدية إلى '+F[u.code]+' '+N[u.code]+(ap>pts?' ⚡':''),pts:'+'+fmt(ap)+' نقطة',big:ap>=500})}
