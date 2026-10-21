@@ -1,127 +1,113 @@
+// سيرفر وسيط: يقرأ تعليقات وهدايا بثك من تيك توك ويبعتها لصفحة اللعبة
 import http from 'node:http';
-import { readFileSync } from 'node:fs';
-import WebSocket, { WebSocketServer } from 'ws';
+import fs from 'node:fs';
+import path from 'node:path';
+import * as zlib from 'node:zlib';
+import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
+import { WebSocketServer } from 'ws';
+import WebSocket from 'ws';
+import { createWebSocketUrl } from '@eulerstream/euler-websocket-sdk';
+import * as Proto from 'tiktok-live-proto/v2';
+import { normalize } from './normalize.js';
 
-const USER = (process.env.TIKTOK_USER || '').replace('@', '').trim();
-const KEY = process.env.SIGN_API_KEY || '';
+const dir = path.dirname(fileURLToPath(import.meta.url));
+const USER = (process.env.TIKTOK_USERNAME || process.env.TIKTOK_USER || 'prnk911').replace(/^@/, '');
 const PORT = process.env.PORT || 3000;
-const MID = Number(process.env.GIFT_MID || 100);
-const BIG = Number(process.env.GIFT_BIG || 1000);
-const EULER_URL = 'wss://ws.eulerstream.com';
+const DEBUG = process.env.DEBUG === '1';
+const unzip = promisify(zlib.unzip);
+const html = fs.readFileSync(path.join(dir, 'index.html'));
+const routes = fs.readFileSync(path.join(dir, 'manus-routes.json'));
+const state = { connected: false, last: null, error: null, events: 0 };
 
-if (!USER) console.error('ناقص المتغير TIKTOK_USER (اسم حسابك بدون @)');
-if (!KEY) console.error('ناقص المتغير SIGN_API_KEY');
-
-const page = readFileSync(new URL('./index.html', import.meta.url));
 const server = http.createServer((req, res) => {
-  if (req.url.startsWith('/health')) { res.end('ok'); return; }
-  res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-  res.end(page);
-});
-const wss = new WebSocketServer({ server, path: '/ws' });
-
-let status = 'wait';
-function send(o) {
-  const s = JSON.stringify(o);
-  wss.clients.forEach((c) => c.readyState === WebSocket.OPEN && c.send(s));
-}
-function setStatus(s) { status = s; send({ t: 'status', s }); }
-function userId(d) {
-  return d?.user?.uniqueId || d?.user?.unique_id || d?.user?.unique_id_name ||
-    d?.user?.displayId || d?.user?.display_id || d?.userInfo?.uniqueId ||
-    d?.userInfo?.unique_id || d?.uniqueId || d?.unique_id;
-}
-function eventData(m) { return m?.data || m?.message || m?.msg || m?.payload || m; }
-function avatarUrl(d) { return d?.user?.profilePictureUrl || d?.user?.profilePicture?.urls?.[0] || d?.userInfo?.profilePictureUrl || d?.avatar || ""; }
-function eventType(m) {
-  return String(m?.type || m?.event || m?.method || m?.name || '').toLowerCase();
-}
-
-wss.on('connection', (ws) => ws.send(JSON.stringify({ t: 'status', s: status })));
-
-let conn = null;
-let retryTimer = null;
-let stopped = false;
-function retry(ms = 10000) {
-  if (retryTimer || stopped) return;
-  setStatus('wait');
-  retryTimer = setTimeout(() => { retryTimer = null; start(); }, ms);
-}
-function closeConnection() {
-  try { conn?.close(); } catch {}
-  conn = null;
-}
-
-function handleMessage(raw) {
-  let packet;
-  try { packet = JSON.parse(raw.toString()); } catch { return; }
-  const messages = Array.isArray(packet?.messages) ? packet.messages : [packet];
-  for (const msg of messages) {
-    const d = eventData(msg);
-    const type = eventType(msg);
-    const who = userId(d) || userId(msg);
-
-    if (type.includes('chat') || type.includes('comment')) {
-      const comment = d?.comment || d?.content || d?.message;
-      if (who && comment) {
-        console.log('تعليق من', who, ':', comment);
-        send({ t: 'chat', u: who, c: comment, av: avatarUrl(d) });
-      }
-      continue;
-    }
-    if (type.includes('gift')) {
-      const giftType = d?.giftType ?? d?.gift_type;
-      const repeatEnd = d?.repeatEnd ?? d?.repeat_end;
-      if (giftType === 1 && repeatEnd === false) continue;
-      const diamondCount = d?.diamondCount || d?.diamond_count || d?.giftDetails?.diamondCount || d?.gift?.diamondCount || 1;
-      const repeatCount = d?.repeatCount || d?.repeat_count || 1;
-      const diamonds = Number(diamondCount) * Number(repeatCount);
-      const k = diamonds >= BIG ? 20 : diamonds >= MID ? 5 : 1;
-      if (who) {
-        console.log('هدية من', who, 'قيمتها', diamonds);
-        send({ t: 'gift', u: who, k, v: diamonds });
-      }
-      continue;
-    }
-    if (type.includes('like')) {
-      const likes = d?.likeCount || d?.like_count || d?.count || d?.likeNum || d?.like_num || d?.totalLikeCount || d?.total_like_count || 1;
-      if (who) {
-        console.log('تكبيس من', who, ':', Number(likes) || 1);
-        send({ t: 'like', u: who, n: Number(likes) || 1 });
-      }
-      continue;
-    }
-    if (type.includes('member') || type.includes('join') || type.includes('roomuser')) {
-      if (who) send({ t: 'enter', u: who });
-      continue;
-    }
-    if (type.includes('follow')) {
-      if (who) send({ t: 'follow', u: who });
-      continue;
-    }
-    if (type.includes('share')) {
-      if (who) send({ t: 'share', u: who });
-    }
+  const u = new URL(req.url, 'http://localhost');
+  if (u.pathname === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, user: USER, tiktokConnected: state.connected, viewersPages: wss.clients.size, events: state.events, lastEvent: state.last, error: state.error }));
+    return;
   }
+  if (u.pathname === '/manus-routes.json') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(routes);
+    return;
+  }
+  if (u.pathname === '/' || u.pathname === '/index.html') {
+    if (!u.searchParams.has('ws')) { u.searchParams.set('ws', 'auto'); res.writeHead(302, { Location: u.pathname + '?' + u.searchParams.toString() }); res.end(); return; }
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(html);
+    return;
+  }
+  res.writeHead(404); res.end('not found');
+});
+
+const wss = new WebSocketServer({ server });
+setInterval(() => wss.clients.forEach(c => c.readyState === 1 && c.ping()), 25000);
+
+function send(event, data) {
+  const msg = JSON.stringify({ event, data });
+  for (const c of wss.clients) if (c.readyState === 1) c.send(msg);
 }
 
-function start() {
-  if (!USER || !KEY || stopped || conn) return;
-  const url = `${EULER_URL}?uniqueId=${encodeURIComponent(USER)}&apiKey=${encodeURIComponent(KEY)}`;
-  console.log('محاولة الاتصال ببث', USER);
-  conn = new WebSocket(url);
-  conn.on('open', () => { console.log('متصل بالبث عبر Euler WebSocket'); setStatus('live'); });
-  conn.on('message', handleMessage);
-  conn.on('error', (e) => console.error('خطأ اتصال Euler:', e?.message || e));
-  conn.on('close', (code, reason) => {
-    const why = reason?.toString() || '';
-    console.error('انقطع اتصال Euler:', code, why);
-    conn = null;
-    retry(code === 4404 ? 15000 : 10000);
+function sendStatus() {
+  send('status', { connected: state.connected, user: USER, error: state.error });
+}
+
+let conn = null, retrying = false;
+function retry() {
+  if (retrying) return;
+  retrying = true;
+  setTimeout(() => { retrying = false; run(); }, 5000);
+}
+function relayEventName(type) {
+  if (/ChatMessage$/i.test(type)) return 'chat';
+  if (/GiftMessage$/i.test(type)) return 'gift';
+  if (/LikeMessage$/i.test(type)) return 'like';
+  if (/MemberMessage$/i.test(type)) return 'member';
+  return null;
+}
+async function decodeRelayFrame(raw) {
+  const bytes = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
+  if (!bytes.length || bytes[0] === 123) return [];
+  const frame = Proto.WebcastPushFrame.decode(bytes);
+  let payload = Buffer.from(frame.payload || []);
+  if (payload[0] === 31 && payload[1] === 139 && payload[2] === 8) payload = await unzip(payload);
+  const batch = Proto.ProtoMessageFetchResult.decode(payload);
+  return (batch.messages || []).flatMap(message => {
+    const Type = Proto[message.type];
+    if (!Type || !message.payload) return [];
+    try { return [{ type: message.type, data: Type.decode(message.payload) }]; } catch (_) { return []; }
   });
 }
+async function run() {
+  const apiKey = process.env.EULER_API_KEY || process.env.SIGN_API_KEY;
+  if (!apiKey) { state.error = 'EULER_API_KEY or SIGN_API_KEY is not configured'; sendStatus(); return; }
+  try { conn && conn.close && conn.close(); } catch (_) {}
+  const url = createWebSocketUrl({ uniqueId: USER, apiKey, features: { schemaVersion: 'v2', bundleEvents: true, syntheticPresence: true, rawMessages: false } });
+  conn = new WebSocket(url);
+  conn.binaryType = 'arraybuffer';
+  conn.on('open', () => { state.connected = false; state.error = null; sendStatus(); console.log('Euler Relay socket open; waiting for live confirmation @' + USER); });
+  conn.on('message', async raw => {
+    try {
+      const messages = await decodeRelayFrame(raw);
+      if (!state.connected) { state.connected = true; state.error = null; sendStatus(); console.log('Euler Relay confirmed live @' + USER); }
+      for (const message of messages) {
+        const type = message.type || '';
+        const name = relayEventName(type);
+        const data = message.data;
+        if (DEBUG) console.log(type, JSON.stringify(data).slice(0, 700));
+        if (!name || !data) continue;
+        const n = normalize(name, data);
+        if (n) { state.last = name; state.events++; send(n.event, n.data); }
+      }
+    } catch (e) { state.error = `relay decode: ${String(e.message || e)}`; console.error(state.error); }
+  });
+  conn.on('close', (code, reason) => { state.connected = false; state.error = `Euler Relay closed ${code}${reason ? `: ${reason}` : ''}`; sendStatus(); console.log(state.error); retry(); });
+  conn.on('error', e => { state.error = String((e && e.message) || e); sendStatus(); console.error('Euler Relay error:', state.error); });
+}
 
-server.listen(PORT, () => console.log('يعمل على المنفذ ' + PORT));
-start();
-process.on('SIGTERM', () => { stopped = true; clearTimeout(retryTimer); closeConnection(); server.close(); });
-process.on('SIGINT', () => { stopped = true; clearTimeout(retryTimer); closeConnection(); server.close(); });
+wss.on('connection', ws => {
+  if (ws.readyState === 1) ws.send(JSON.stringify({ event: 'status', data: { connected: state.connected, user: USER, error: state.error } }));
+});
+
+server.listen(PORT, () => { console.log('server on port ' + PORT + ' | account @' + USER); run(); });
