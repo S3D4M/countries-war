@@ -87,11 +87,12 @@ function handleError(error) {
 }
 function connectTikTok() {
   if (stopped || connection?.isConnected || connection?.isConnecting) return;
-  connection = new TikTokLiveConnection(USER, {
-    // لا نمرر SIGN_API_KEY هنا حتى لا يعود الاتصال إلى EulerStream.
-    processInitialData: false,
-    fetchRoomInfoOnConnect: false
-  });
+	connection = new TikTokLiveConnection(USER, {
+	    // اتصال مباشر بالمكتبة؛ تفعيل بيانات الغرفة يحسن ثبات استقبال الأحداث.
+	    processInitialData: true,
+	    fetchRoomInfoOnConnect: true,
+	    enableExtendedGiftInfo: true
+	  });
   console.log('محاولة اتصال مباشر بحساب', USER);
 
   connection.on(WebcastEvent.CHAT, data => {
