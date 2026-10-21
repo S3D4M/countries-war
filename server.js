@@ -1,113 +1,87 @@
-// سيرفر وسيط: يقرأ تعليقات وهدايا بثك من تيك توك ويبعتها لصفحة اللعبة
+// جسر مباشر: يقرأ أحداث TikTok ويرسلها بصيغة اللعبة الجديدة
 import http from 'node:http';
-import fs from 'node:fs';
-import path from 'node:path';
-import * as zlib from 'node:zlib';
-import { promisify } from 'node:util';
-import { fileURLToPath } from 'node:url';
-import { WebSocketServer } from 'ws';
-import WebSocket from 'ws';
-import { createWebSocketUrl } from '@eulerstream/euler-websocket-sdk';
-import * as Proto from 'tiktok-live-proto/v2';
-import { normalize } from './normalize.js';
+import { readFileSync } from 'node:fs';
+import WebSocket, { WebSocketServer } from 'ws';
 
-const dir = path.dirname(fileURLToPath(import.meta.url));
-const USER = (process.env.TIKTOK_USERNAME || process.env.TIKTOK_USER || 'prnk911').replace(/^@/, '');
+const USER = (process.env.TIKTOK_USERNAME || process.env.TIKTOK_USER || 'prnk911').replace(/^@/, '').trim();
+const KEY = process.env.EULER_API_KEY || process.env.SIGN_API_KEY || '';
 const PORT = process.env.PORT || 3000;
-const DEBUG = process.env.DEBUG === '1';
-const unzip = promisify(zlib.unzip);
-const html = fs.readFileSync(path.join(dir, 'index.html'));
-const routes = fs.readFileSync(path.join(dir, 'manus-routes.json'));
-const state = { connected: false, last: null, error: null, events: 0 };
+const EULER_URL = 'wss://ws.eulerstream.com';
+
+const page = readFileSync(new URL('./index.html', import.meta.url));
+const state = { connected: false, events: 0, last: null, error: null };
+let wss;
 
 const server = http.createServer((req, res) => {
   const u = new URL(req.url, 'http://localhost');
   if (u.pathname === '/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, user: USER, tiktokConnected: state.connected, viewersPages: wss.clients.size, events: state.events, lastEvent: state.last, error: state.error }));
-    return;
-  }
-  if (u.pathname === '/manus-routes.json') {
-    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-    res.end(routes);
+    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+    res.end(JSON.stringify({ ok: true, user: USER, tiktokConnected: state.connected, viewersPages: wss?.clients.size || 0, events: state.events, lastEvent: state.last, error: state.error }));
     return;
   }
   if (u.pathname === '/' || u.pathname === '/index.html') {
-    if (!u.searchParams.has('ws')) { u.searchParams.set('ws', 'auto'); res.writeHead(302, { Location: u.pathname + '?' + u.searchParams.toString() }); res.end(); return; }
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
-    res.end(html);
+    if (!u.searchParams.has('ws')) { u.searchParams.set('ws', 'auto'); res.writeHead(302, { location: u.pathname + '?' + u.searchParams.toString() }); res.end(); return; }
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+    res.end(page);
     return;
   }
   res.writeHead(404); res.end('not found');
 });
 
-const wss = new WebSocketServer({ server });
-setInterval(() => wss.clients.forEach(c => c.readyState === 1 && c.ping()), 25000);
-
+wss = new WebSocketServer({ server });
 function send(event, data) {
   const msg = JSON.stringify({ event, data });
-  for (const c of wss.clients) if (c.readyState === 1) c.send(msg);
+  for (const client of wss.clients) if (client.readyState === WebSocket.OPEN) client.send(msg);
+}
+function setConnection(connected, error = null) {
+  state.connected = connected; state.error = error; send('status', { connected, user: USER, error });
+}
+function userId(d) {
+  return d?.user?.uniqueId || d?.user?.unique_id || d?.user?.unique_id_name || d?.user?.displayId || d?.user?.display_id || d?.userInfo?.uniqueId || d?.userInfo?.unique_id || d?.uniqueId || d?.unique_id || d?.username;
+}
+function eventData(m) { return m?.data || m?.message || m?.msg || m?.payload || m; }
+function eventType(m) { return String(m?.type || m?.event || m?.method || m?.name || '').toLowerCase(); }
+
+function handleMessage(raw) {
+  let packet;
+  try { packet = JSON.parse(raw.toString()); } catch { return; }
+  const messages = Array.isArray(packet?.messages) ? packet.messages : [packet];
+  for (const msg of messages) {
+    const d = eventData(msg); const type = eventType(msg); const who = userId(d) || userId(msg);
+    if (!who) continue;
+    if (type.includes('chat') || type.includes('comment')) {
+      const comment = d?.comment || d?.content || d?.message || d?.text;
+      if (comment) { state.last = 'chat'; state.events++; console.log('تعليق من', who, ':', comment); send('chat', { uniqueId: who, nickname: who, comment }); }
+    } else if (type.includes('gift')) {
+      const giftType = d?.giftType ?? d?.gift_type; const repeatEnd = d?.repeatEnd ?? d?.repeat_end;
+      if (giftType === 1 && repeatEnd === false) continue;
+      const diamonds = Number(d?.diamondCount || d?.diamond_count || d?.giftDetails?.diamondCount || d?.gift?.diamondCount || d?.diamonds || 1) * Number(d?.repeatCount || d?.repeat_count || 1);
+      state.last = 'gift'; state.events++; send('gift', { uniqueId: who, nickname: who, diamondCount: diamonds, repeatCount: 1 });
+    } else if (type.includes('like')) {
+      const likes = Number(d?.likeCount || d?.like_count || d?.count || d?.likeNum || d?.like_num || d?.totalLikeCount || d?.total_like_count || 1) || 1;
+      state.last = 'like'; state.events++; console.log('تكبيس من', who, ':', likes); send('like', { uniqueId: who, nickname: who, likeCount: likes });
+    } else if (type.includes('member') || type.includes('join') || type.includes('roomuser')) {
+      state.last = 'member'; state.events++; send('member', { uniqueId: who, nickname: who });
+    }
+  }
 }
 
-function sendStatus() {
-  send('status', { connected: state.connected, user: USER, error: state.error });
-}
-
-let conn = null, retrying = false;
-function retry() {
-  if (retrying) return;
-  retrying = true;
-  setTimeout(() => { retrying = false; run(); }, 5000);
-}
-function relayEventName(type) {
-  if (/ChatMessage$/i.test(type)) return 'chat';
-  if (/GiftMessage$/i.test(type)) return 'gift';
-  if (/LikeMessage$/i.test(type)) return 'like';
-  if (/MemberMessage$/i.test(type)) return 'member';
-  return null;
-}
-async function decodeRelayFrame(raw) {
-  const bytes = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
-  if (!bytes.length || bytes[0] === 123) return [];
-  const frame = Proto.WebcastPushFrame.decode(bytes);
-  let payload = Buffer.from(frame.payload || []);
-  if (payload[0] === 31 && payload[1] === 139 && payload[2] === 8) payload = await unzip(payload);
-  const batch = Proto.ProtoMessageFetchResult.decode(payload);
-  return (batch.messages || []).flatMap(message => {
-    const Type = Proto[message.type];
-    if (!Type || !message.payload) return [];
-    try { return [{ type: message.type, data: Type.decode(message.payload) }]; } catch (_) { return []; }
-  });
-}
-async function run() {
-  const apiKey = process.env.EULER_API_KEY || process.env.SIGN_API_KEY;
-  if (!apiKey) { state.error = 'EULER_API_KEY or SIGN_API_KEY is not configured'; sendStatus(); return; }
-  try { conn && conn.close && conn.close(); } catch (_) {}
-  const url = createWebSocketUrl({ uniqueId: USER, apiKey, features: { schemaVersion: 'v2', bundleEvents: true, syntheticPresence: true, rawMessages: false } });
+let conn = null; let retryTimer = null; let stopped = false;
+function start() {
+  if (!KEY || stopped || conn) return;
+  const url = `${EULER_URL}?uniqueId=${encodeURIComponent(USER)}&apiKey=${encodeURIComponent(KEY)}`;
+  console.log('محاولة الاتصال ببث', USER);
   conn = new WebSocket(url);
-  conn.binaryType = 'arraybuffer';
-  conn.on('open', () => { state.connected = false; state.error = null; sendStatus(); console.log('Euler Relay socket open; waiting for live confirmation @' + USER); });
-  conn.on('message', async raw => {
-    try {
-      const messages = await decodeRelayFrame(raw);
-      if (!state.connected) { state.connected = true; state.error = null; sendStatus(); console.log('Euler Relay confirmed live @' + USER); }
-      for (const message of messages) {
-        const type = message.type || '';
-        const name = relayEventName(type);
-        const data = message.data;
-        if (DEBUG) console.log(type, JSON.stringify(data).slice(0, 700));
-        if (!name || !data) continue;
-        const n = normalize(name, data);
-        if (n) { state.last = name; state.events++; send(n.event, n.data); }
-      }
-    } catch (e) { state.error = `relay decode: ${String(e.message || e)}`; console.error(state.error); }
+  conn.on('open', () => { console.log('اتصال Euler المباشر مفتوح'); setConnection(true); });
+  conn.on('message', handleMessage);
+  conn.on('error', e => { state.error = String(e?.message || e); console.error('خطأ Euler:', state.error); });
+  conn.on('close', (code, reason) => {
+    const why = reason?.toString() || ''; conn = null; setConnection(false, `Euler closed ${code}${why ? `: ${why}` : ''}`); console.error(state.error);
+    if (!stopped) { clearTimeout(retryTimer); retryTimer = setTimeout(() => { retryTimer = null; start(); }, code === 4404 ? 15000 : 10000); }
   });
-  conn.on('close', (code, reason) => { state.connected = false; state.error = `Euler Relay closed ${code}${reason ? `: ${reason}` : ''}`; sendStatus(); console.log(state.error); retry(); });
-  conn.on('error', e => { state.error = String((e && e.message) || e); sendStatus(); console.error('Euler Relay error:', state.error); });
 }
 
-wss.on('connection', ws => {
-  if (ws.readyState === 1) ws.send(JSON.stringify({ event: 'status', data: { connected: state.connected, user: USER, error: state.error } }));
-});
-
-server.listen(PORT, () => { console.log('server on port ' + PORT + ' | account @' + USER); run(); });
+wss.on('connection', ws => ws.send(JSON.stringify({ event: 'status', data: { connected: state.connected, user: USER, error: state.error } })));
+server.listen(PORT, () => { console.log('server on port ' + PORT + ' | account @' + USER); start(); });
+process.on('SIGTERM', () => { stopped = true; clearTimeout(retryTimer); try { conn?.close(); } catch {} server.close(); });
+process.on('SIGINT', () => { stopped = true; clearTimeout(retryTimer); try { conn?.close(); } catch {} server.close(); });
